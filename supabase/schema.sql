@@ -1,17 +1,5 @@
 create extension if not exists pgcrypto;
 
-create or replace function public.is_admin()
-returns boolean
-language sql
-stable
-as $$
-  select exists (
-    select 1
-    from public.admin_profiles
-    where user_id = auth.uid()
-  );
-$$;
-
 create table if not exists public.admin_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   display_name text not null default 'Admin',
@@ -36,6 +24,18 @@ create table if not exists public.project_requests (
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+as $$
+  select exists (
+    select 1
+    from public.admin_profiles
+    where user_id = auth.uid()
+  );
+$$;
 
 create or replace function public.touch_updated_at()
 returns trigger
