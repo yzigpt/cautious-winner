@@ -9,6 +9,8 @@ const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
 const DB_DIR = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
+  : process.env.RAILWAY_VOLUME_MOUNT_PATH
+    ? path.resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH)
   : path.join(ROOT, "data");
 const DB_PATH = path.join(DB_DIR, "app.db");
 const DEFAULT_ADMIN_USERNAME = "admin";
