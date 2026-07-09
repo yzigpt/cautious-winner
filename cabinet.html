@@ -19,11 +19,12 @@
         <div>
           <p class="eyebrow">🛡 Кабинет</p>
           <h1>Заявки покупателей</h1>
-          <p class="section-copy">Все обращения, диалоги и ответы собраны в одном месте.</p>
+          <p class="section-copy">Все обращения и отзывы теперь хранятся в облаке через Supabase.</p>
         </div>
         <nav class="sidebar-nav">
           <a href="#overview">Обзор</a>
           <a href="#requests">Заявки</a>
+          <a href="#reviews">Отзывы</a>
         </nav>
         <div class="sidebar-user" id="admin-user-card"></div>
         <button class="auth-btn auth-btn--ghost" id="admin-logout-btn" type="button">Выйти</button>
@@ -34,7 +35,7 @@
           <p class="eyebrow">✨ Панель управления</p>
           <h1>Кабинет для просмотра и обработки заявок покупателей</h1>
           <p class="section-copy">
-            Здесь видно все обращения: кто написал, когда обратился и на какой стадии сейчас диалог.
+            Здесь видны все обращения: кто написал, что попросил и на каком этапе сейчас заявка.
           </p>
           <div class="cabinet-stats">
             <article class="stat-card">
@@ -60,13 +61,14 @@
             </div>
             <div class="cabinet-toolbar">
               <div class="filter-tabs" role="tablist" aria-label="Фильтр заявок">
-                <button class="auth-btn auth-btn--ghost is-active" type="button" data-conversation-filter="new">Новые</button>
-                <button class="auth-btn auth-btn--ghost" type="button" data-conversation-filter="answered">Ответили</button>
-                <button class="auth-btn auth-btn--ghost" type="button" data-conversation-filter="all">Все</button>
+                <button class="auth-btn auth-btn--ghost is-active" type="button" data-request-filter="new">Новые</button>
+                <button class="auth-btn auth-btn--ghost" type="button" data-request-filter="answered">Ответили</button>
+                <button class="auth-btn auth-btn--ghost" type="button" data-request-filter="all">Все</button>
               </div>
               <button class="auth-btn auth-btn--ghost" id="cabinet-refresh-btn" type="button">Обновить</button>
             </div>
           </div>
+
           <div class="cabinet-workspace">
             <div class="cabinet-table-wrap">
               <table class="cabinet-table">
@@ -77,23 +79,51 @@
                     <th>Статус</th>
                   </tr>
                 </thead>
-                <tbody id="conversation-list"></tbody>
+                <tbody id="request-list"></tbody>
               </table>
             </div>
+
             <div class="conversation-panel">
-              <div class="auth-status" id="cabinet-message-status" aria-live="polite"></div>
-              <div class="chat-feed chat-feed--cabinet" id="cabinet-thread"></div>
-              <form class="chat-form" id="reply-form">
-                <label class="field" for="reply-text">
-                  <span>Ответ покупателю</span>
-                  <textarea id="reply-text" rows="4" placeholder="Напишите ответ..." required></textarea>
+              <div class="auth-status" id="cabinet-request-status" aria-live="polite"></div>
+              <div class="surface-note" id="request-empty">
+                <h3>Выберите заявку</h3>
+                <p class="section-copy">Здесь будет видно полное сообщение и внутренний ответ администратора.</p>
+              </div>
+              <div id="request-detail" hidden>
+                <div class="chat-bubble">
+                  <div class="chat-bubble__meta">
+                    <span id="request-name"></span>
+                    <span id="request-date"></span>
+                  </div>
+                  <div id="request-text"></div>
+                </div>
+                <label class="field" for="request-state">
+                  <span>Статус</span>
+                  <select id="request-state">
+                    <option value="new">Новая</option>
+                    <option value="answered">Ответили</option>
+                  </select>
                 </label>
-                <button class="auth-btn auth-btn--solid" type="submit">Отправить ответ</button>
-              </form>
+                <label class="field" for="request-reply">
+                  <span>Комментарий или ответ</span>
+                  <textarea id="request-reply" rows="5" placeholder="Например: связались в Telegram и обсудили следующий шаг"></textarea>
+                </label>
+                <button class="auth-btn auth-btn--solid" id="request-save-btn" type="button">Сохранить заявку</button>
+              </div>
             </div>
           </div>
         </section>
 
+        <section class="card cabinet-panel" id="reviews">
+          <div class="cabinet-panel__head">
+            <div>
+              <p class="eyebrow">⭐ Отзывы</p>
+              <h2>Управление отзывами</h2>
+            </div>
+            <div class="auth-status" id="review-editor-status" aria-live="polite"></div>
+          </div>
+          <div class="reviews-feed" id="review-editor-feed"></div>
+        </section>
       </main>
     </div>
 
@@ -103,6 +133,7 @@
         <p class="eyebrow">🔒 Защита кабинета</p>
         <h3 id="admin-gate-title">Вход администратора</h3>
         <p class="modal__text" id="admin-gate-text"></p>
+        <p class="modal__text">Email администратора: <strong id="admin-email-hint"></strong></p>
         <form class="auth-form auth-form--modal" id="admin-login-form">
           <label class="field" for="admin-login-password">
             <span>Пароль</span>

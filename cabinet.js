@@ -1,40 +1,55 @@
 import {
+  SUPABASE_ADMIN_EMAIL,
   adminLogin,
   adminLogout,
+  deleteAdminReview,
   getAdminMe,
   getAdminStatus,
   getOverview,
-  getConversationMessages,
-  listConversations,
-  sendAdminMessage,
+  listAdminReviews,
+  listProjectRequests,
+  updateAdminReview,
+  updateProjectRequest,
 } from "./admin-api.js";
-import { escapeHtml } from "./storage.js";
+import { escapeHtml, starString } from "./storage.js";
 
 const gate = document.getElementById("admin-gate");
 const gateText = document.getElementById("admin-gate-text");
+const adminEmailHint = document.getElementById("admin-email-hint");
 const adminLoginForm = document.getElementById("admin-login-form");
 const adminLoginPassword = document.getElementById("admin-login-password");
 const adminUserCard = document.getElementById("admin-user-card");
 const adminLogoutBtn = document.getElementById("admin-logout-btn");
 const cabinetRefreshBtn = document.getElementById("cabinet-refresh-btn");
-const filterButtons = Array.from(document.querySelectorAll("[data-conversation-filter]"));
+const filterButtons = Array.from(document.querySelectorAll("[data-request-filter]"));
 const statRequests = document.getElementById("stat-requests");
 const statUnread = document.getElementById("stat-unread");
 const statAnswered = document.getElementById("stat-answered");
-const messageStatus = document.getElementById("cabinet-message-status");
-const conversationList = document.getElementById("conversation-list");
-const threadFeed = document.getElementById("cabinet-thread");
-const replyForm = document.getElementById("reply-form");
-const replyText = document.getElementById("reply-text");
+const requestStatus = document.getElementById("cabinet-request-status");
+const requestList = document.getElementById("request-list");
+const requestDetail = document.getElementById("request-detail");
+const requestEmpty = document.getElementById("request-empty");
+const requestName = document.getElementById("request-name");
+const requestDate = document.getElementById("request-date");
+const requestText = document.getElementById("request-text");
+const requestReply = document.getElementById("request-reply");
+const requestState = document.getElementById("request-state");
+const requestSaveBtn = document.getElementById("request-save-btn");
+const reviewFeed = document.getElementById("review-editor-feed");
+const reviewStatus = document.getElementById("review-editor-status");
 
 let admin = null;
-let conversationState = [];
-let selectedConversationId = null;
+let requestStateItems = [];
+let selectedRequestId = null;
+let activeFilter = "new";
 let refreshTimer = null;
-let activeFilter = "all";
 
 function setGateMessage(message) {
   gateText.textContent = message;
+}
+
+function setRequestStatus(message) {
+  requestStatus.textContent = message;
 }
 
 function openGate() {
@@ -51,14 +66,14 @@ function renderAdminUser() {
   if (!admin) {
     adminUserCard.innerHTML = `
       <div class="sidebar-user__name">Гость</div>
-      <div class="sidebar-user__meta">Кабинет защищен паролем</div>
+      <div class="sidebar-user__meta">Кабинет защищён через Supabase Auth</div>
     `;
     return;
   }
 
   adminUserCard.innerHTML = `
     <div class="sidebar-user__name">👋 ${escapeHtml(admin.username)}</div>
-    <div class="sidebar-user__meta">Доступ подтвержден</div>
+    <div class="sidebar-user__meta">${escapeHtml(admin.email)}</div>
   `;
 }
 
@@ -70,59 +85,50 @@ function renderStats(overview) {
   );
 }
 
-function getFilteredConversations() {
-  if (activeFilter === "all") return conversationState;
-  if (activeFilter === "answered") {
-    return conversationState.filter((item) => item.status === "answered");
-  }
-  return conversationState.filter((item) => item.status === "new");
+function getFilteredRequests() {
+  if (activeFilter === "all") return requestStateItems;
+  return requestStateItems.filter((item) => item.status === activeFilter);
 }
 
-function renderConversationList() {
-  const filtered = getFilteredConversations();
+function renderRequestList() {
+  const filtered = getFilteredRequests();
 
   filterButtons.forEach((button) => {
-    button.classList.toggle(
-      "is-active",
-      button.dataset.conversationFilter === activeFilter
-    );
+    button.classList.toggle("is-active", button.dataset.requestFilter === activeFilter);
   });
 
   if (!filtered.length) {
-    conversationList.innerHTML = `
+    requestList.innerHTML = `
       <tr class="conversation-row conversation-row--empty">
-        <td colspan="3">Пока нет заявок в этом фильтре. Когда покупатель напишет сообщение, оно появится здесь.</td>
+        <td colspan="3">В этом фильтре пока нет заявок.</td>
       </tr>
     `;
-    threadFeed.innerHTML = "";
-    messageStatus.textContent = "Нет активных заявок.";
+    requestDetail.hidden = true;
+    requestEmpty.hidden = false;
+    selectedRequestId = null;
     return;
   }
 
-  if (!selectedConversationId || !filtered.some((item) => item.id === selectedConversationId)) {
-    selectedConversationId = filtered[0].id;
+  if (!selectedRequestId || !filtered.some((item) => item.id === selectedRequestId)) {
+    selectedRequestId = filtered[0].id;
   }
 
-  conversationList.innerHTML = filtered
+  requestList.innerHTML = filtered
     .map(
-      (conversation) => `
-        <tr class="conversation-row ${conversation.id === selectedConversationId ? "is-active" : ""}" data-conversation-id="${escapeHtml(conversation.id)}">
+      (item) => `
+        <tr class="conversation-row ${item.id === selectedRequestId ? "is-active" : ""}" data-request-id="${escapeHtml(item.id)}">
           <td>
             <div class="conversation-cell__main">
-              <strong>${escapeHtml(conversation.visitor_name)}</strong>
-              <small>${new Date(conversation.updated_at).toLocaleString("ru-RU")}</small>
+              <strong>${escapeHtml(item.name)}</strong>
+              <small>${new Date(item.created_at).toLocaleString("ru-RU")}</small>
             </div>
           </td>
           <td>
-            <span class="conversation-preview">${escapeHtml(
-              conversation.last_message || "Нет сообщения"
-            )}</span>
+            <span class="conversation-preview">${escapeHtml(item.text)}</span>
           </td>
           <td>
-            <span class="status-pill status-pill--${
-              conversation.status === "answered" ? "answered" : "new"
-            }">
-              ${conversation.status === "answered" ? "Ответили" : "Новая"}
+            <span class="status-pill status-pill--${item.status === "answered" ? "answered" : "new"}">
+              ${item.status === "answered" ? "Ответили" : "Новая"}
             </span>
           </td>
         </tr>
@@ -130,65 +136,107 @@ function renderConversationList() {
     )
     .join("");
 
-  renderThread();
+  renderRequestDetail();
 }
 
-async function renderThread() {
-  if (!selectedConversationId) return;
-
-  try {
-    const payload = await getConversationMessages(selectedConversationId);
-    const messages = payload.messages || [];
-
-    if (!messages.length) {
-      threadFeed.innerHTML = `<div class="chat-bubble">Пустой диалог.</div>`;
-      messageStatus.textContent = "Диалог открыт.";
-      return;
-    }
-
-    const conversation = conversationState.find((item) => item.id === selectedConversationId);
-    messageStatus.textContent = conversation
-      ? `Заявка от ${escapeHtml(conversation.visitor_name)}.`
-      : "Диалог открыт.";
-
-    threadFeed.innerHTML = messages
-      .map(
-        (message) => `
-          <div class="chat-bubble ${message.sender === "admin" ? "chat-bubble--me" : ""}">
-            <div class="chat-bubble__meta">
-              <span>${escapeHtml(message.sender_name)}</span>
-              <span>${new Date(message.created_at).toLocaleTimeString("ru-RU", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}</span>
-            </div>
-            <div>${escapeHtml(message.text)}</div>
-          </div>
-        `
-      )
-      .join("");
-  } catch (error) {
-    messageStatus.textContent =
-      error.message || "Не удалось загрузить сообщения.";
+function renderRequestDetail() {
+  const request = requestStateItems.find((item) => item.id === selectedRequestId);
+  if (!request) {
+    requestDetail.hidden = true;
+    requestEmpty.hidden = false;
+    return;
   }
+
+  requestDetail.hidden = false;
+  requestEmpty.hidden = true;
+  requestName.textContent = request.name;
+  requestDate.textContent = new Date(request.created_at).toLocaleString("ru-RU");
+  requestText.textContent = request.text;
+  requestReply.value = request.admin_reply || "";
+  requestState.value = request.status;
+  setRequestStatus(`Заявка открыта: ${request.name}`);
+}
+
+function renderReviews(reviews) {
+  if (!reviews.length) {
+    reviewFeed.innerHTML = `
+      <article class="review-item review-item--empty">
+        <p class="review-item__text">Пока отзывов нет.</p>
+      </article>
+    `;
+    return;
+  }
+
+  reviewFeed.innerHTML = reviews
+    .map(
+      (review, index) => `
+        <article class="review-item" data-review-id="${escapeHtml(review.id)}" style="--delay: ${index * 60}ms">
+          <div class="review-item__top">
+            <div>
+              <div class="review-item__name">${escapeHtml(review.name)}</div>
+              <div class="review-item__meta">${new Date(review.created_at).toLocaleString("ru-RU")}</div>
+            </div>
+            <div class="review-item__rating">${starString(review.rating)}</div>
+          </div>
+          <label class="field">
+            <span>Текст отзыва</span>
+            <textarea rows="5" data-review-text>${escapeHtml(review.text)}</textarea>
+          </label>
+          <div class="rating-block">
+            <span class="field-label">Оценка</span>
+            <div class="rating" aria-label="Оценка от 1 до 5">
+              ${[5, 4, 3, 2, 1]
+                .map(
+                  (value) => `
+                    <input type="radio" name="rating-${review.id}" id="rating-${review.id}-${value}" value="${value}" ${
+                      Number(review.rating) === value ? "checked" : ""
+                    } />
+                    <label for="rating-${review.id}-${value}">★</label>
+                  `
+                )
+                .join("")}
+            </div>
+          </div>
+          <div class="review-item__actions">
+            <button class="auth-btn auth-btn--solid review-item__action" type="button" data-review-save="${escapeHtml(review.id)}">Сохранить</button>
+            <button class="auth-btn auth-btn--ghost review-item__action review-item__action--danger" type="button" data-review-delete="${escapeHtml(review.id)}">Удалить</button>
+          </div>
+        </article>
+      `
+    )
+    .join("");
 }
 
 async function refreshDashboard() {
-  const overview = await getOverview();
-  conversationState = (await listConversations()).conversations || [];
+  const [overview, requestsPayload, reviewsPayload] = await Promise.all([
+    getOverview(),
+    listProjectRequests("all"),
+    listAdminReviews(),
+  ]);
 
-  if (
-    activeFilter === "answered" &&
-    !conversationState.some((item) => item.status === "answered")
-  ) {
+  requestStateItems = requestsPayload.requests || [];
+
+  if (activeFilter === "answered" && !requestStateItems.some((item) => item.status === "answered")) {
     activeFilter = "all";
   }
 
   renderStats(overview);
-  renderConversationList();
+  renderRequestList();
+  renderReviews(reviewsPayload.reviews || []);
+  reviewStatus.textContent = `Отзывов в базе: ${(reviewsPayload.reviews || []).length}`;
+}
+
+function startAutoRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => {
+    if (admin && document.visibilityState === "visible") {
+      refreshDashboard().catch(() => {});
+    }
+  }, 10000);
 }
 
 async function bootstrapAuth() {
+  adminEmailHint.textContent = SUPABASE_ADMIN_EMAIL;
   const status = await getAdminStatus();
 
   if (status.authenticated) {
@@ -201,46 +249,37 @@ async function bootstrapAuth() {
   }
 
   openGate();
-  setGateMessage("Введите пароль администратора для входа в кабинет заявок.");
   renderAdminUser();
-}
-
-function startAutoRefresh() {
-  if (refreshTimer) clearInterval(refreshTimer);
-
-  refreshTimer = setInterval(() => {
-    if (admin) {
-      refreshDashboard().catch(() => {});
-    }
-  }, 8000);
+  setGateMessage("Введите пароль администратора. Email для входа берётся из supabase-config.js.");
 }
 
 adminLoginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-
   try {
-    await adminLogin({
-      username: "admin",
-      password: adminLoginPassword.value,
-    });
+    await adminLogin({ password: adminLoginPassword.value });
     admin = (await getAdminMe()).admin;
     closeGate();
     renderAdminUser();
     await refreshDashboard();
     startAutoRefresh();
   } catch (error) {
-    setGateMessage(error.message || "Не удалось войти.");
+    setGateMessage(error.message || "Не удалось войти в кабинет.");
   }
 });
 
 adminLogoutBtn.addEventListener("click", async () => {
-  await adminLogout();
-  admin = null;
-  conversationState = [];
-  closeGate();
-  openGate();
-  renderAdminUser();
-  setGateMessage("Сессия завершена. Введите пароль снова.");
+  try {
+    await adminLogout();
+  } finally {
+    admin = null;
+    requestStateItems = [];
+    selectedRequestId = null;
+    renderAdminUser();
+    requestList.innerHTML = "";
+    reviewFeed.innerHTML = "";
+    openGate();
+    setGateMessage("Сессия завершена. Введите пароль снова.");
+  }
 });
 
 cabinetRefreshBtn.addEventListener("click", async () => {
@@ -250,29 +289,66 @@ cabinetRefreshBtn.addEventListener("click", async () => {
 
 filterButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    activeFilter = button.dataset.conversationFilter;
-    selectedConversationId = null;
-    renderConversationList();
+    activeFilter = button.dataset.requestFilter;
+    selectedRequestId = null;
+    renderRequestList();
   });
 });
 
-conversationList.addEventListener("click", (event) => {
-  const item = event.target.closest("[data-conversation-id]");
-  if (!item) return;
-  selectedConversationId = item.dataset.conversationId;
-  renderConversationList();
+requestList.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-request-id]");
+  if (!row) return;
+  selectedRequestId = row.dataset.requestId;
+  renderRequestList();
 });
 
-replyForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (!selectedConversationId) return;
+requestSaveBtn.addEventListener("click", async () => {
+  if (!selectedRequestId) return;
+  try {
+    const payload = await updateProjectRequest(selectedRequestId, {
+      status: requestState.value,
+      admin_reply: requestReply.value,
+    });
+    const next = payload.request;
+    requestStateItems = requestStateItems.map((item) => (item.id === next.id ? next : item));
+    renderRequestList();
+    setRequestStatus("Заявка сохранена в Supabase.");
+  } catch (error) {
+    setRequestStatus(error.message || "Не удалось обновить заявку.");
+  }
+});
 
-  const text = replyText.value.trim();
-  if (!text) return;
+reviewFeed.addEventListener("click", async (event) => {
+  const saveButton = event.target.closest("[data-review-save]");
+  const deleteButton = event.target.closest("[data-review-delete]");
+  if (!saveButton && !deleteButton) return;
 
-  await sendAdminMessage(selectedConversationId, { text });
-  replyText.value = "";
-  await refreshDashboard();
+  try {
+    if (deleteButton) {
+      const reviewId = deleteButton.dataset.reviewDelete;
+      if (!window.confirm("Удалить этот отзыв?")) return;
+      await deleteAdminReview(reviewId);
+      await refreshDashboard();
+      return;
+    }
+
+    const reviewId = saveButton.dataset.reviewSave;
+    const card = saveButton.closest(".review-item");
+    const text = card.querySelector("[data-review-text]").value.trim();
+    const ratingInput = card.querySelector('input[type="radio"]:checked');
+    const rating = ratingInput ? Number(ratingInput.value) : 5;
+    await updateAdminReview(reviewId, { text, rating });
+    reviewStatus.textContent = "Отзыв сохранён.";
+    await refreshDashboard();
+  } catch (error) {
+    reviewStatus.textContent = error.message || "Не удалось изменить отзыв.";
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && admin) {
+    refreshDashboard().catch(() => {});
+  }
 });
 
 await bootstrapAuth();

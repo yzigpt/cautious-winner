@@ -1,0 +1,122 @@
+create extension if not exists pgcrypto;
+
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+as $$
+  select exists (
+    select 1
+    from public.admin_profiles
+    where user_id = auth.uid()
+  );
+$$;
+
+create table if not exists public.admin_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  display_name text not null default 'Admin',
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.reviews (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  text text not null check (char_length(trim(text)) > 0),
+  rating integer not null check (rating between 1 and 5),
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz
+);
+
+create table if not exists public.project_requests (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  text text not null check (char_length(trim(text)) > 0),
+  status text not null default 'new' check (status in ('new', 'answered')),
+  admin_reply text,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create or replace function public.touch_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
+drop trigger if exists project_requests_touch_updated_at on public.project_requests;
+create trigger project_requests_touch_updated_at
+before update on public.project_requests
+for each row
+execute function public.touch_updated_at();
+
+alter table public.admin_profiles enable row level security;
+alter table public.reviews enable row level security;
+alter table public.project_requests enable row level security;
+
+drop policy if exists "admin profiles select own row" on public.admin_profiles;
+create policy "admin profiles select own row"
+on public.admin_profiles
+for select
+to authenticated
+using (user_id = auth.uid() or public.is_admin());
+
+drop policy if exists "public can read reviews" on public.reviews;
+create policy "public can read reviews"
+on public.reviews
+for select
+to anon, authenticated
+using (true);
+
+drop policy if exists "public can create reviews" on public.reviews;
+create policy "public can create reviews"
+on public.reviews
+for insert
+to anon, authenticated
+with check (true);
+
+drop policy if exists "admins can update reviews" on public.reviews;
+create policy "admins can update reviews"
+on public.reviews
+for update
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+drop policy if exists "admins can delete reviews" on public.reviews;
+create policy "admins can delete reviews"
+on public.reviews
+for delete
+to authenticated
+using (public.is_admin());
+
+drop policy if exists "public can create project requests" on public.project_requests;
+create policy "public can create project requests"
+on public.project_requests
+for insert
+to anon, authenticated
+with check (true);
+
+drop policy if exists "admins can read project requests" on public.project_requests;
+create policy "admins can read project requests"
+on public.project_requests
+for select
+to authenticated
+using (public.is_admin());
+
+drop policy if exists "admins can update project requests" on public.project_requests;
+create policy "admins can update project requests"
+on public.project_requests
+for update
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+grant usage on schema public to anon, authenticated;
+grant select, insert on public.reviews to anon, authenticated;
+grant insert on public.project_requests to anon, authenticated;
+grant select, update, delete on public.reviews to authenticated;
+grant select, update on public.project_requests to authenticated;
