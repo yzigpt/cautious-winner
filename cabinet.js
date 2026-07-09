@@ -237,6 +237,7 @@ function startAutoRefresh() {
 
 async function bootstrapAuth() {
   adminEmailHint.textContent = SUPABASE_ADMIN_EMAIL;
+  await adminLogout().catch(() => {});
   const status = await getAdminStatus();
 
   if (status.authenticated) {
