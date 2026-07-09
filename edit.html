@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Редактирование отзывов" />
+    <title>Редактирование отзывов</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="card reviews-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Редактор</p>
+            <h1>Отдельная страница для управления отзывами</h1>
+          </div>
+          <p class="section-copy">
+            Здесь можно быстро редактировать и удалять отзывы после входа в защищённый кабинет.
+          </p>
+        </div>
+
+        <div class="cta-row">
+          <a class="cta-btn cta-btn--secondary" href="index.html">
+            <span>На главную</span>
+          </a>
+          <a class="cta-btn cta-btn--primary" href="cabinet.html">
+            <span>Открыть кабинет</span>
+          </a>
+        </div>
+
+        <div class="auth-status" id="editor-status" aria-live="polite"></div>
+        <div class="reviews-feed" id="editor-feed"></div>
+      </section>
+    </main>
+
+    <div class="modal" id="admin-gate" aria-hidden="true">
+      <div class="modal__backdrop"></div>
+      <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="admin-gate-title">
+        <p class="eyebrow">Защита кабинета</p>
+        <h3 id="admin-gate-title">Вход администратора</h3>
+        <p class="modal__text" id="admin-gate-text"></p>
+        <div class="auth-tabs">
+          <button class="auth-btn auth-btn--ghost is-active" type="button" data-admin-tab="login">Вход</button>
+          <button class="auth-btn auth-btn--solid" type="button" data-admin-tab="setup">Первичная настройка</button>
+        </div>
+        <form class="auth-form auth-form--modal" id="admin-login-form">
+          <label class="field" for="admin-login-username">
+            <span>Логин</span>
+            <input id="admin-login-username" type="text" autocomplete="username" required />
+          </label>
+          <label class="field" for="admin-login-password">
+            <span>Пароль</span>
+            <input id="admin-login-password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="auth-btn auth-btn--solid" type="submit">Войти</button>
+        </form>
+        <form class="auth-form auth-form--modal" id="admin-setup-form" hidden>
+          <label class="field" for="admin-setup-username">
+            <span>Новый логин</span>
+            <input id="admin-setup-username" type="text" autocomplete="username" required />
+          </label>
+          <label class="field" for="admin-setup-password">
+            <span>Новый пароль</span>
+            <input id="admin-setup-password" type="password" autocomplete="new-password" required />
+          </label>
+          <button class="auth-btn auth-btn--solid" type="submit">Создать доступ</button>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="edit.js"></script>
+  </body>
+</html>

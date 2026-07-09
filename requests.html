@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Оставить заявку на сайт, Telegram-бота или автоматизацию" />
+    <title>Оставить заявку</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="site-brand-link" href="index.html">
+          <span class="site-brand-link__mark">FO</span>
+          <span>Frog Oxide Studio</span>
+        </a>
+        <nav class="site-nav" aria-label="Основная навигация">
+          <a href="index.html">Главная</a>
+          <a href="reviews.html">Отзывы</a>
+          <a class="is-active" href="requests.html">Заявка</a>
+          <a href="cabinet.html">Кабинет</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page page--site">
+      <div class="hero__glow hero__glow--one"></div>
+      <div class="hero__glow hero__glow--two"></div>
+
+      <section class="card page-intro page-intro--reviews">
+        <p class="eyebrow">Заявка</p>
+        <h1>Отдельная страница для заявок и новых обращений</h1>
+        <p class="section-copy">
+          Опишите задачу и оставьте имя. Заявка сразу попадёт в кабинет, где её можно будет быстро посмотреть и обработать.
+        </p>
+        <div class="page-intro__meta" aria-label="Преимущества страницы заявок">
+          <span class="meta-pill">📝 Простая форма</span>
+          <span class="meta-pill">📥 Заявка сразу в кабинет</span>
+          <span class="meta-pill">🤝 Понятная коммуникация</span>
+        </div>
+        <div class="page-intro__actions">
+          <a class="cta-btn cta-btn--primary" href="#leave-request">Оставить заявку</a>
+          <a class="cta-btn cta-btn--secondary" href="tel:+79174083192">Позвонить</a>
+        </div>
+      </section>
+
+      <section class="card contact-card contact-card--page" id="leave-request">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">✉️ Связь</p>
+            <h2>Оставить заявку</h2>
+          </div>
+          <p class="section-copy">
+            Подходит для сайта, Telegram-бота, автоматизации, интеграции или личного кабинета. Чем точнее описание, тем быстрее можно дать понятный ответ.
+          </p>
+        </div>
+
+        <form class="contact-form" id="contact-form">
+          <label class="field" for="contact-name">
+            <span>Ваше имя</span>
+            <input id="contact-name" type="text" placeholder="Например, Анна" autocomplete="name" required />
+          </label>
+          <label class="field" for="contact-text">
+            <span>Ваше сообщение</span>
+            <textarea id="contact-text" rows="6" placeholder="Например: нужен Telegram-бот для заявок и сайт с презентацией услуг" required></textarea>
+          </label>
+          <button class="submit-btn" type="submit">Отправить заявку</button>
+        </form>
+        <div class="auth-status" id="contact-status" aria-live="polite"></div>
+
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span>⚡</span>
+            <strong>Быстрая оценка</strong>
+            <p>Смотрю задачу, предлагаю понятный путь и не затягиваю первый ответ.</p>
+          </article>
+          <article class="feature-card">
+            <span>🧩</span>
+            <strong>Под ваши процессы</strong>
+            <p>Решение собирается вокруг бизнеса, а не под шаблон ради шаблона.</p>
+          </article>
+          <article class="feature-card">
+            <span>🔐</span>
+            <strong>Аккуратная работа</strong>
+            <p>Вся заявка уходит в отдельный кабинет, где её можно спокойно обработать.</p>
+          </article>
+        </div>
+      </section>
+      <section class="card surface-note">
+        <div>
+          <p class="eyebrow">Фокус</p>
+          <h2>Форма заявки сделана так, чтобы человеку было легко написать, а вам было легко быстро ответить</h2>
+        </div>
+        <p class="section-copy">
+          Без регистрации, без перегруженных шагов и без путаницы. Имя, задача и понятный сценарий дальше.
+        </p>
+      </section>
+    </main>
+
+    <script defer src="site-shell.js"></script>
+    <script type="module" src="requests.js"></script>
+  </body>
+</html>

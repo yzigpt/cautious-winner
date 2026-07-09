@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Отзывы клиентов о работе Frog Oxide Studio" />
+    <title>Отзывы клиентов</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="site-brand-link" href="index.html">
+          <span class="site-brand-link__mark">FO</span>
+          <span>Frog Oxide Studio</span>
+        </a>
+        <nav class="site-nav" aria-label="Основная навигация">
+          <a href="index.html">Главная</a>
+          <a class="is-active" href="reviews.html">Отзывы</a>
+          <a href="requests.html">Заявка</a>
+          <a href="cabinet.html">Кабинет</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page page--site">
+      <div class="hero__glow hero__glow--one"></div>
+      <div class="hero__glow hero__glow--two"></div>
+
+      <section class="card page-intro page-intro--reviews">
+        <p class="eyebrow">Отзывы</p>
+        <h1>Отдельная страница с отзывами клиентов</h1>
+        <p class="section-copy">
+          Здесь можно спокойно посмотреть, что пишут клиенты, и сразу оставить свой отзыв без регистрации и лишних шагов.
+        </p>
+        <div class="page-intro__meta" aria-label="Преимущества отзывов">
+          <span class="meta-pill">⭐ Живые отзывы</span>
+          <span class="meta-pill">⚡ Быстрое добавление</span>
+          <span class="meta-pill">🗄 Хранение в SQLite</span>
+        </div>
+        <div class="page-intro__actions">
+          <a class="cta-btn cta-btn--primary" href="#leave-review">Оставить отзыв</a>
+          <a class="cta-btn cta-btn--secondary" href="#reviews-feed">Смотреть отзывы</a>
+        </div>
+      </section>
+
+      <section class="card reviews-card reviews-card--page" id="leave-review">
+        <div class="section-head section-head--reviews">
+          <div>
+            <p class="eyebrow">Ваш отзыв</p>
+            <h2>Поделитесь впечатлением о работе</h2>
+          </div>
+          <p class="section-copy section-copy--shift">
+            Оставьте имя и отзыв прямо в форме ниже. Новый отзыв сразу появится в общем списке.
+          </p>
+        </div>
+
+        <div class="review-shell">
+          <form class="review-form" id="review-form">
+            <label class="field" for="review-name">
+              <span>Ваше имя</span>
+              <input id="review-name" type="text" placeholder="Например, Анна" autocomplete="name" />
+            </label>
+
+            <label class="field" for="review-text">
+              <span>Ваш отзыв</span>
+              <textarea id="review-text" rows="5" placeholder="Напишите, что вам понравилось в работе" required></textarea>
+            </label>
+
+            <div class="rating-block">
+              <span class="field-label">Оценка работы</span>
+              <div class="rating" aria-label="Оценка от 1 до 5 звезд">
+                <input type="radio" name="rating" id="star5" value="5" checked />
+                <label for="star5" title="5 звезд">★</label>
+                <input type="radio" name="rating" id="star4" value="4" />
+                <label for="star4" title="4 звезды">★</label>
+                <input type="radio" name="rating" id="star3" value="3" />
+                <label for="star3" title="3 звезды">★</label>
+                <input type="radio" name="rating" id="star2" value="2" />
+                <label for="star2" title="2 звезды">★</label>
+                <input type="radio" name="rating" id="star1" value="1" />
+                <label for="star1" title="1 звезда">★</label>
+              </div>
+            </div>
+
+            <button class="submit-btn" type="submit">Оставить отзыв</button>
+          </form>
+          <div class="auth-status" id="review-status" aria-live="polite"></div>
+        </div>
+
+        <section class="reviews-list" aria-labelledby="saved-reviews-title">
+          <div class="reviews-list__head">
+            <h3 id="saved-reviews-title">Что уже написали клиенты</h3>
+            <p>Отзывы загружаются из SQLite и обновляются без перезагрузки страницы.</p>
+          </div>
+          <div class="reviews-feed" id="reviews-feed"></div>
+        </section>
+      </section>
+      <section class="card surface-note">
+        <div>
+          <p class="eyebrow">Доверие</p>
+          <h2>Отзывы здесь работают как реальная часть доверия, а не как декоративный блок</h2>
+        </div>
+        <p class="section-copy">
+          Новые отзывы сразу появляются в общей ленте. Это помогает будущим клиентам увидеть живой опыт сотрудничества, а не просто красивый макет без содержания.
+        </p>
+      </section>
+    </main>
+
+    <script defer src="site-shell.js"></script>
+    <script type="module" src="reviews.js"></script>
+  </body>
+</html>
