@@ -1,3 +1,3 @@
-export const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
-export const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
-export const SUPABASE_ADMIN_EMAIL = "admin@example.com";
+export const SUPABASE_URL = "https://kgdqwmbpxgdwxpyflajb.supabase.co/rest/v1/";
+export const SUPABASE_ANON_KEY = "sb_publishable_7rMnXWFSxmkkhdHBCgk-jA_ONOWck6A";
+export const SUPABASE_ADMIN_EMAIL = "arsengptplus@gmail.com";
