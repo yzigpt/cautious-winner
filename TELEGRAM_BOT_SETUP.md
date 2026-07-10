@@ -40,4 +40,4 @@ Invoke-RestMethod -Method Post -Uri "https://api.telegram.org/botNEW_BOT_TOKEN/s
 
 ## Enable sending from the website
 
-After both functions are deployed, switch `sendMessage` in `site-api.js` to call the `telegram-request` function. Do this only after deployment so the public form stays available.
+After both functions are deployed and you receive the `/start` confirmation from the bot, set `TELEGRAM_REQUEST_FUNCTION_ENABLED` to `true` in `supabase-config.js` and publish the site. Until then, the form keeps saving requests directly to Supabase.

@@ -3,6 +3,7 @@ import {
   getSupabaseConfigError,
   isSupabaseConfigured,
 } from "./supabase-client.js?v=20260710-telegram";
+import { TELEGRAM_REQUEST_FUNCTION_ENABLED } from "./supabase-config.js";
 
 const REVIEWS_TABLE = "reviews";
 const REQUESTS_TABLE = "project_requests";
@@ -85,27 +86,20 @@ export async function sendMessage({ name, text }) {
     throw new Error("Заполните имя и сообщение.");
   }
 
-  // The Edge Function stores the request and sends a Telegram notification.
-  // Before it is deployed, keep the original database-only flow available.
-  const { data: telegramResult, error: telegramError } = await supabase.functions.invoke(
-    "telegram-request",
-    { body: payload }
-  );
+  if (TELEGRAM_REQUEST_FUNCTION_ENABLED) {
+    const { data: telegramResult, error: telegramError } = await supabase.functions.invoke(
+      "telegram-request",
+      { body: payload }
+    );
 
-  if (!telegramError && telegramResult?.ok) {
+    if (telegramError || !telegramResult?.ok) {
+      throw new Error("Не удалось отправить заявку.");
+    }
+
     return {
       ok: true,
       notificationSent: Boolean(telegramResult.notificationSent),
     };
-  }
-
-  const functionStatus = telegramError?.context?.status;
-  if (telegramError && functionStatus !== 404) {
-    throw new Error("Не удалось отправить заявку.");
-  }
-
-  if (!telegramError) {
-    throw new Error("Не удалось отправить заявку.");
   }
 
   // Visitors may create requests but must never be able to read them back.
