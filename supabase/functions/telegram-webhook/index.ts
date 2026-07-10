@@ -102,6 +102,10 @@ function accessStatusLabel(status: string) {
   return "\u{1F7E2} \u0410\u043A\u0442\u0438\u0432\u0435\u043D";
 }
 
+function siteDisplayName(user: any) {
+  return String(user.user_metadata?.display_name || "\u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u044C");
+}
+
 async function loadManagedUsers(supabase: any) {
   const [{ data: userPage, error: usersError }, { data: controls, error: controlsError }, { data: ipControls, error: ipError }] = await Promise.all([
     supabase.auth.admin.listUsers({ page: 1, perPage: 200 }),
@@ -116,7 +120,7 @@ async function loadManagedUsers(supabase: any) {
     return {
       id: user.id,
       email: user.email || "",
-      name: String(user.user_metadata?.display_name || ""),
+      name: siteDisplayName(user),
       created_at: user.created_at,
       last_sign_in_at: user.last_sign_in_at,
       account_status: control?.account_status || "active",
@@ -142,12 +146,12 @@ async function sendUsersList(supabase: any, botToken: string, chatId: number, of
   const users = await loadManagedUsers(supabase);
   const page = users.slice(offset, offset + 10);
   const rows = page.map((user, index) => [
-    `<b>${offset + index + 1}. ${escapeHtml(user.name || user.email || "User")}</b>`,
+    `<b>${offset + index + 1}. ${escapeHtml(user.name)}</b>`,
     `\u{1F4E7} ${escapeHtml(user.email)}`,
     `\u{1F512} ${accessStatusLabel(user.account_status)}  |  IP: ${accessStatusLabel(user.ip_status)}`,
   ].join("\n"));
   const userButtons = page.map((user, index) => [{
-    text: `\u{1F464} ${offset + index + 1}. ${(user.name || user.email || "User").slice(0, 28)}`,
+    text: `\u{1F464} ${offset + index + 1}. ${user.name.slice(0, 28)}`,
     callback_data: `user:view:${user.id}`,
   }]);
   await telegramRequest(botToken, "sendMessage", {
@@ -209,7 +213,7 @@ async function sendUserDetails(supabase: any, botToken: string, chatId: number, 
     text: [
       "<b>\u{1F464} \u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u044C</b>",
       "",
-      `<b>\u0418\u043C\u044F:</b> ${escapeHtml(String(user.user_metadata?.display_name || "\u0431\u0435\u0437 \u0438\u043C\u0435\u043D\u0438"))}`,
+      `<b>\u0418\u043C\u044F:</b> ${escapeHtml(siteDisplayName(user))}`,
       `<b>Email:</b> ${escapeHtml(user.email || "\u043D\u0435 \u0443\u043A\u0430\u0437\u0430\u043D")}`,
       `<b>\u0410\u043A\u043A\u0430\u0443\u043D\u0442:</b> ${accessStatusLabel(accountStatus)}`,
       `<b>IP:</b> ${accessStatusLabel(ipStatus)}`,
