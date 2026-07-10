@@ -178,19 +178,28 @@ async function sendUserDetails(supabase: any, botToken: string, chatId: number, 
   const ipStatus = ipControl?.access_status || "active";
   const fingerprint = control?.ip_hash ? `${control.ip_hash.slice(0, 10)}...${control.ip_hash.slice(-6)}` : "\u043D\u0435\u0442 \u0430\u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u0438";
   const createdAt = new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Yekaterinburg" }).format(new Date(user.created_at));
-  const actions = [
-    [
-      { text: "\u{1F7E2} \u0410\u043A\u0442\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u0442\u044C", callback_data: `user:account:${userId}:active` },
-      { text: "\u{1F9CA} \u0417\u0430\u043C\u043E\u0440\u043E\u0437\u0438\u0442\u044C", callback_data: `user:account:${userId}:frozen` },
-    ],
-    [{ text: "\u{1F6AB} \u0417\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0430\u043A\u043A\u0430\u0443\u043D\u0442", callback_data: `user:account:${userId}:blocked` }],
-  ] as any[];
-  if (control?.ip_hash) {
+  const actions = [] as any[];
+  if (accountStatus === "frozen") {
+    actions.push([{ text: "\u{1F9CA} \u0420\u0430\u0437\u043C\u043E\u0440\u043E\u0437\u0438\u0442\u044C \u0430\u043A\u043A\u0430\u0443\u043D\u0442", callback_data: `user:account:${userId}:active` }]);
+  } else if (accountStatus === "blocked") {
+    actions.push([{ text: "\u{1F513} \u0420\u0430\u0437\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0430\u043A\u043A\u0430\u0443\u043D\u0442", callback_data: `user:account:${userId}:active` }]);
+  } else {
     actions.push([
-      { text: "\u{1F7E2} \u0410\u043A\u0442\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u0442\u044C IP", callback_data: `user:ip:${userId}:active` },
-      { text: "\u{1F9CA} \u0417\u0430\u043C\u043E\u0440\u043E\u0437\u0438\u0442\u044C IP", callback_data: `user:ip:${userId}:frozen` },
+      { text: "\u{1F9CA} \u0417\u0430\u043C\u043E\u0440\u043E\u0437\u0438\u0442\u044C", callback_data: `user:account:${userId}:frozen` },
+      { text: "\u{1F6AB} \u0417\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u0442\u044C", callback_data: `user:account:${userId}:blocked` },
     ]);
-    actions.push([{ text: "\u{1F6AB} \u0417\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u0442\u044C IP", callback_data: `user:ip:${userId}:blocked` }]);
+  }
+  if (control?.ip_hash) {
+    if (ipStatus === "frozen") {
+      actions.push([{ text: "\u{1F9CA} \u0420\u0430\u0437\u043C\u043E\u0440\u043E\u0437\u0438\u0442\u044C IP", callback_data: `user:ip:${userId}:active` }]);
+    } else if (ipStatus === "blocked") {
+      actions.push([{ text: "\u{1F513} \u0420\u0430\u0437\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u0442\u044C IP", callback_data: `user:ip:${userId}:active` }]);
+    } else {
+      actions.push([
+        { text: "\u{1F9CA} \u0417\u0430\u043C\u043E\u0440\u043E\u0437\u0438\u0442\u044C IP", callback_data: `user:ip:${userId}:frozen` },
+        { text: "\u{1F6AB} \u0417\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u0442\u044C IP", callback_data: `user:ip:${userId}:blocked` },
+      ]);
+    }
   }
   actions.push([{ text: "\u{2B05}\u{FE0F} \u041A \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u044F\u043C", callback_data: "users:list:0" }]);
   actions.push([{ text: "\u25C6 Control Center", callback_data: "dashboard:home" }]);
