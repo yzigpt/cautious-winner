@@ -57,6 +57,13 @@ Deno.serve(async (request) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+    if (!accessToken) return json({ ok: false, error: "Authentication required" }, 401);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(accessToken);
+    if (userError || !user) return json({ ok: false, error: "Authentication required" }, 401);
     const forwardedFor = request.headers.get("x-forwarded-for") || "unknown";
     const clientIp = forwardedFor.split(",")[0].trim();
     const { data: isAllowed, error: rateLimitError } = await supabase.rpc("check_request_rate_limit", {
@@ -67,7 +74,7 @@ Deno.serve(async (request) => {
 
     const { data: createdRequest, error: insertError } = await supabase
       .from("project_requests")
-      .insert({ name, contact_details: contactDetails, text })
+      .insert({ user_id: user.id, name, contact_details: contactDetails, text })
       .select("id, request_number, created_at")
       .single();
 

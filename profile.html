@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://kgdqwmbpxgdwxpyflajb.supabase.co wss://kgdqwmbpxgdwxpyflajb.supabase.co; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
+    <title>Личный кабинет</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="site-brand-link" href="index.html"><span class="site-brand-link__mark">FO</span><span>Frog Oxide Studio</span></a>
+        <nav class="site-nav" aria-label="Основная навигация">
+          <a href="index.html">Главная</a>
+          <a href="reviews.html">Отзывы</a>
+          <a href="requests.html">Заявка</a>
+          <a class="is-active" href="profile.html">Личный кабинет</a>
+        </nav>
+      </div>
+    </header>
+    <main class="page page--site">
+      <section class="card account-hero">
+        <p class="eyebrow">🔐 Личный кабинет</p>
+        <h1>Ваши заявки и их актуальный статус</h1>
+        <p class="section-copy">Войдите в аккаунт, чтобы отправлять заявки и видеть изменения статуса в реальном времени.</p>
+      </section>
+      <section class="account-grid" id="auth-panel">
+        <form class="card auth-form" id="login-form">
+          <h2>Войти</h2>
+          <label class="field"><span>Email</span><input id="login-email" type="email" autocomplete="email" required /></label>
+          <label class="field"><span>Пароль</span><input id="login-password" type="password" autocomplete="current-password" minlength="6" required /></label>
+          <button class="submit-btn" type="submit">Войти</button>
+        </form>
+        <form class="card auth-form" id="signup-form">
+          <h2>Создать аккаунт</h2>
+          <label class="field"><span>Ваше имя</span><input id="signup-name" type="text" autocomplete="name" required /></label>
+          <label class="field"><span>Email</span><input id="signup-email" type="email" autocomplete="email" required /></label>
+          <label class="field"><span>Пароль</span><input id="signup-password" type="password" autocomplete="new-password" minlength="6" required /></label>
+          <button class="submit-btn" type="submit">Зарегистрироваться</button>
+        </form>
+      </section>
+      <div class="auth-status" id="auth-status" aria-live="polite"></div>
+      <section class="card profile-card" id="profile-panel" hidden>
+        <div class="profile-card__head"><div><p class="eyebrow">👤 Профиль</p><h2 id="profile-name"></h2><p class="section-copy" id="profile-email"></p></div><button class="auth-btn auth-btn--ghost" id="logout-button" type="button">Выйти</button></div>
+        <div class="profile-requests__head"><div><h2>Мои заявки</h2><p class="section-copy">Статусы обновляются автоматически.</p></div><a class="cta-btn cta-btn--primary" href="requests.html">Новая заявка</a></div>
+        <div class="profile-requests" id="my-requests" aria-live="polite"></div>
+      </section>
+    </main>
+    <script defer src="site-shell.js"></script>
+    <script type="module" src="profile.js"></script>
+  </body>
+</html>

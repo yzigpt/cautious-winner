@@ -5,6 +5,7 @@ create extension if not exists pgcrypto;
 
 create table if not exists public.reviews (
   id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
   name text not null,
   text text not null check (char_length(trim(text)) > 0),
   rating integer not null check (rating between 1 and 5),
@@ -25,6 +26,7 @@ create table if not exists public.project_requests (
 
 create sequence if not exists public.project_request_number_seq;
 alter table public.project_requests add column if not exists request_number bigint;
+alter table public.project_requests add column if not exists user_id uuid references auth.users(id) on delete set null;
 alter table public.project_requests alter column request_number set default nextval('public.project_request_number_seq');
 with numbered_requests as (
   select id, row_number() over (order by created_at asc, id asc) as request_number
@@ -134,3 +136,20 @@ revoke insert on public.reviews from anon, authenticated;
 revoke insert on public.project_requests from anon, authenticated;
 revoke all on function public.check_request_rate_limit(text) from public, anon, authenticated;
 grant execute on function public.check_request_rate_limit(text) to service_role;
+
+drop policy if exists "users can read own project requests" on public.project_requests;
+create policy "users can read own project requests"
+on public.project_requests
+for select
+to authenticated
+using (user_id = auth.uid());
+
+create index if not exists project_requests_user_id_created_at_idx
+on public.project_requests (user_id, created_at desc);
+
+do $$
+begin
+  alter publication supabase_realtime add table public.project_requests;
+exception
+  when duplicate_object then null;
+end $$;

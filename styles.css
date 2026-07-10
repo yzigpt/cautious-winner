@@ -1224,6 +1224,82 @@ h1 {
   white-space: nowrap;
 }
 
+.account-hero,
+.profile-card {
+  width: min(1120px, 100%);
+  justify-self: center;
+}
+
+.account-hero {
+  padding: clamp(28px, 5vw, 54px);
+}
+
+.account-hero h1,
+.profile-card h2 {
+  margin: 0;
+}
+
+.account-grid {
+  width: min(1120px, 100%);
+  justify-self: center;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.auth-form {
+  display: grid;
+  gap: 16px;
+  padding: 28px;
+}
+
+.profile-card {
+  display: grid;
+  gap: 28px;
+  padding: clamp(26px, 4vw, 42px);
+}
+
+.profile-card__head,
+.profile-requests__head,
+.profile-request {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.profile-requests {
+  display: grid;
+  gap: 12px;
+}
+
+.profile-request {
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.profile-request p {
+  margin: 8px 0;
+  line-height: 1.55;
+}
+
+.profile-request small {
+  color: var(--muted);
+}
+
+.profile-request__status {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 800;
+  background: rgba(246, 211, 122, 0.16);
+}
+
+.profile-request__status--answered { background: rgba(74, 222, 128, 0.16); }
+.profile-request__status--rejected { background: rgba(255, 99, 132, 0.16); }
+
 .field input:focus,
 .field textarea:focus {
   border-color: rgba(102, 217, 255, 0.6);
@@ -1565,6 +1641,20 @@ h1 {
   .site-nav a {
     flex: 1;
     text-align: center;
+  }
+
+  .account-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-card__head,
+  .profile-requests__head,
+  .profile-request {
+    flex-direction: column;
+  }
+
+  .profile-request__status {
+    align-self: flex-start;
   }
 
   .page {

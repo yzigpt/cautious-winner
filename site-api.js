@@ -85,9 +85,15 @@ export async function sendMessage({ name, contact_details: contactDetails, text,
   }
 
   if (TELEGRAM_REQUEST_FUNCTION_ENABLED) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      throw new Error("Войдите в личный кабинет, чтобы отправить заявку и отслеживать её статус.");
+    }
     const { data: telegramResult, error: telegramError } = await supabase.functions.invoke(
       "telegram-request",
-      { body: payload }
+      { body: payload, headers: { Authorization: `Bearer ${session.access_token}` } }
     );
 
     if (telegramError || !telegramResult?.ok) {
