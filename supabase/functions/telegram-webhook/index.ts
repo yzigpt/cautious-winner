@@ -24,6 +24,66 @@ function statusLabel(status: string) {
   return "🆕 Новая";
 }
 
+function controlCenterMenu() {
+  return {
+    inline_keyboard: [
+      [{ text: "\u{1F4CB} \u0412\u0441\u0435 \u0437\u0430\u044F\u0432\u043A\u0438", callback_data: "list:all:0" }],
+      [
+        { text: "\u{1F195} \u041D\u043E\u0432\u044B\u0435", callback_data: "list:new:0" },
+        { text: "\u{2705} \u0412 \u0440\u0430\u0431\u043E\u0442\u0435", callback_data: "list:answered:0" },
+      ],
+      [
+        { text: "\u{1F3C1} \u0417\u0430\u0432\u0435\u0440\u0448\u0451\u043D\u043D\u044B\u0435", callback_data: "list:completed:0" },
+        { text: "\u{1F6AB} \u041E\u0442\u043A\u043B\u043E\u043D\u0451\u043D\u043D\u044B\u0435", callback_data: "list:rejected:0" },
+      ],
+      [
+        { text: "\u{2B50} \u041E\u0442\u0437\u044B\u0432\u044B", callback_data: "reviews:list" },
+        { text: "\u{1F310} \u0421\u0430\u0439\u0442", callback_data: "site:menu" },
+      ],
+    ],
+  };
+}
+
+async function sendControlCenter(supabase: any, botToken: string, chatId: number) {
+  const [
+    { count: totalRequests, error: totalError },
+    { count: newRequests, error: newError },
+    { count: activeRequests, error: activeError },
+    { count: completedRequests, error: completedError },
+    { count: totalReviews, error: reviewsError },
+    { data: settings, error: settingsError },
+  ] = await Promise.all([
+    supabase.from("project_requests").select("*", { count: "exact", head: true }),
+    supabase.from("project_requests").select("*", { count: "exact", head: true }).eq("status", "new"),
+    supabase.from("project_requests").select("*", { count: "exact", head: true }).eq("status", "answered"),
+    supabase.from("project_requests").select("*", { count: "exact", head: true }).eq("status", "completed"),
+    supabase.from("reviews").select("*", { count: "exact", head: true }),
+    supabase.from("site_settings").select("requests_enabled").eq("id", 1).maybeSingle(),
+  ]);
+  if (totalError || newError || activeError || completedError || reviewsError || settingsError) {
+    throw totalError || newError || activeError || completedError || reviewsError || settingsError;
+  }
+
+  const requestsEnabled = settings?.requests_enabled !== false;
+  await telegramRequest(botToken, "sendMessage", {
+    chat_id: chatId,
+    text: [
+      "<b>\u{2726} FROG OXIDE</b>",
+      "<code>CONTROL CENTER  /  ONLINE</code>",
+      "",
+      `<b>\u{1F4E5} \u0412\u0441\u0435\u0433\u043E \u0437\u0430\u044F\u0432\u043E\u043A:</b> ${totalRequests || 0}`,
+      `<b>\u{1F195} \u041D\u043E\u0432\u044B\u0435:</b> ${newRequests || 0}    <b>\u{2705} \u0412 \u0440\u0430\u0431\u043E\u0442\u0435:</b> ${activeRequests || 0}`,
+      `<b>\u{1F3C1} \u0417\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E:</b> ${completedRequests || 0}    <b>\u{2B50} \u041E\u0442\u0437\u044B\u0432\u043E\u0432:</b> ${totalReviews || 0}`,
+      "",
+      `<b>\u{1F310} \u0421\u0430\u0439\u0442:</b> ${requestsEnabled ? "\u{1F7E2} \u043F\u0440\u0438\u0451\u043C \u0437\u0430\u044F\u0432\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442" : "\u{1F7E0} \u043F\u0440\u0438\u0451\u043C \u0437\u0430\u044F\u0432\u043E\u043A \u043F\u0430\u0443\u0437\u0435"}`,
+      "",
+      "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0440\u0430\u0437\u0434\u0435\u043B \u043D\u0438\u0436\u0435.",
+    ].join("\n"),
+    parse_mode: "HTML",
+    reply_markup: controlCenterMenu(),
+  });
+}
+
 type ProjectRequest = {
   id: string;
   request_number: number;
@@ -112,6 +172,9 @@ function requestMenuWithCompletion() {
   menu.inline_keyboard.splice(2, 0, [
     { text: "\u{1F3C1} \u0417\u0430\u0432\u0435\u0440\u0448\u0451\u043D\u043D\u044B\u0435", callback_data: "list:completed:0" },
   ]);
+  menu.inline_keyboard.push([
+    { text: "\u{25C6} Control Center", callback_data: "dashboard:home" },
+  ]);
   return menu;
 }
 
@@ -119,6 +182,9 @@ function requestActionsWithCompletion(requestId: string) {
   const actions = requestActions(requestId);
   actions.inline_keyboard.splice(2, 0, [
     { text: "\u{1F3C1} \u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044C", callback_data: `request:${requestId}:completed` },
+  ]);
+  actions.inline_keyboard.push([
+    { text: "\u{25C6} Control Center", callback_data: "dashboard:home" },
   ]);
   return actions;
 }
@@ -343,6 +409,33 @@ Deno.serve(async (request) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const message = update.message;
     const command = String(message?.text || "").trim().toLowerCase().split(/\s+/)[0].split("@")[0];
+    if (message?.chat && ["/start", "/help"].includes(command)) {
+      const chat = message.chat;
+      const isKnownChat = await isConnectedAdmin(supabase, chat.id);
+      const { count, error: chatCountError } = await supabase
+        .from("telegram_admin_chats")
+        .select("*", { count: "exact", head: true });
+      if (chatCountError) throw chatCountError;
+
+      if (!isKnownChat && count) {
+        await telegramRequest(botToken, "sendMessage", {
+          chat_id: chat.id,
+          text: "\u{1F512} \u0414\u043E\u0441\u0442\u0443\u043F \u043A \u0446\u0435\u043D\u0442\u0440\u0443 \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F \u043E\u0433\u0440\u0430\u043D\u0438\u0447\u0435\u043D.",
+        });
+        return new Response("ok", { status: 200 });
+      }
+
+      if (!isKnownChat) {
+        await supabase.from("telegram_admin_chats").upsert({
+          chat_id: chat.id,
+          chat_type: chat.type,
+          display_name: [chat.first_name, chat.last_name].filter(Boolean).join(" ") || chat.username || "Admin",
+        });
+      }
+
+      await sendControlCenter(supabase, botToken, chat.id);
+      return new Response("ok", { status: 200 });
+    }
     if (message?.chat && ["/start", "/requests", "/заявки", "/reviews", "/отзывы", "/site", "/сайт", "/help"].includes(command)) {
       const chat = message.chat;
       const isKnownChat = await isConnectedAdmin(supabase, chat.id);
@@ -396,6 +489,15 @@ Deno.serve(async (request) => {
         callback_query_id: callback.id,
         text: "Нет доступа к заявкам",
         show_alert: true,
+      });
+      return new Response("ok", { status: 200 });
+    }
+
+    if (callback && String(callback.data || "") === "dashboard:home") {
+      await sendControlCenter(supabase, botToken, callback.message.chat.id);
+      await telegramRequest(botToken, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: "\u0426\u0435\u043D\u0442\u0440 \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F \u043E\u0431\u043D\u043E\u0432\u043B\u0451\u043D",
       });
       return new Response("ok", { status: 200 });
     }
