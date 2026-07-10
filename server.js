@@ -135,6 +135,8 @@ function getContentType(filePath) {
       return "application/javascript; charset=utf-8";
     case ".json":
       return "application/json; charset=utf-8";
+    case ".png":
+      return "image/png";
     default:
       return "application/octet-stream";
   }
@@ -437,6 +439,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "GET" && (url.pathname === "/requests" || url.pathname === "/requests.html")) {
     return serveFile(res, "requests.html");
+  }
+
+  if (req.method === "GET" && (url.pathname === "/portfolio" || url.pathname === "/portfolio.html")) {
+    return serveFile(res, "portfolio.html");
   }
 
   if (req.method === "POST" && url.pathname === "/api/auth/send-code") {
@@ -897,6 +903,8 @@ const server = http.createServer(async (req, res) => {
     "/storage.js": "storage.js",
     "/api.js": "api.js",
     "/site-api.js": "site-api.js",
+    "/scene.js": "scene.js",
+    "/assets/developer-studio-hero.png": "assets/developer-studio-hero.png",
   };
 
   if (staticCandidates[url.pathname]) {

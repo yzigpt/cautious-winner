@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
+    <meta name="description" content="Портфолио Frog Oxide Studio: сайты, Telegram-боты и автоматизация" />
+    <title>Портфолио - Frog Oxide Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="site-brand-link" href="index.html">
+          <span class="site-brand-link__mark">FO</span>
+          <span>Frog Oxide Studio</span>
+        </a>
+        <nav class="site-nav" aria-label="Основная навигация">
+          <a href="index.html">Главная</a>
+          <a class="is-active" href="portfolio.html">Портфолио</a>
+          <a href="reviews.html">Отзывы</a>
+          <a href="requests.html">Заявка</a>
+          <a href="profile.html">Личный кабинет</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page page--site page--portfolio">
+      <div class="hero__glow hero__glow--one"></div>
+      <div class="hero__glow hero__glow--two"></div>
+
+      <section class="card portfolio-hero">
+        <div>
+          <p class="eyebrow">Портфолио</p>
+          <h1>Цифровые продукты, в которых дизайн, логика и автоматизация работают вместе</h1>
+          <p class="section-copy">
+            Здесь собраны форматы задач, которые можно собрать под ваш бизнес: от презентационного сайта до связки с Telegram, базой данных и внутренними сценариями.
+          </p>
+        </div>
+        <div class="portfolio-hero__meta" aria-label="Направления портфолио">
+          <span>Web</span>
+          <span>Telegram</span>
+          <span>Automation</span>
+        </div>
+      </section>
+
+      <section class="portfolio-grid" aria-label="Форматы проектов">
+        <article class="card project-card project-card--featured">
+          <div class="project-card__visual project-card__visual--studio">
+            <img src="assets/developer-studio-hero.png" alt="Разработка цифрового продукта" loading="lazy" decoding="async" />
+            <span class="project-card__label">Featured format</span>
+          </div>
+          <div class="project-card__content">
+            <p class="eyebrow">01 · Web + Telegram</p>
+            <h2>Лендинг, который принимает заявки и сразу передаёт их в рабочий процесс</h2>
+            <p>Презентация услуг, сильная подача, форма связи, уведомления в Telegram и удобный путь для клиента от первого экрана до диалога.</p>
+            <div class="project-card__tags"><span>Лендинг</span><span>Заявки</span><span>Telegram</span></div>
+          </div>
+        </article>
+
+        <article class="card project-card">
+          <div class="project-card__visual project-card__visual--bot" aria-hidden="true">
+            <span class="bot-orbit bot-orbit--one"></span>
+            <span class="bot-orbit bot-orbit--two"></span>
+            <span class="bot-core">TG</span>
+          </div>
+          <div class="project-card__content">
+            <p class="eyebrow">02 · Telegram bot</p>
+            <h2>Бот для заявок, уведомлений и понятных действий команды</h2>
+            <p>Сценарии общения, статусы, быстрые ответы и интеграции, которые экономят время и не дают обращениям теряться.</p>
+            <div class="project-card__tags"><span>Сценарии</span><span>Статусы</span><span>Уведомления</span></div>
+          </div>
+        </article>
+
+        <article class="card project-card">
+          <div class="project-card__visual project-card__visual--flow" aria-hidden="true">
+            <span class="flow-line flow-line--one"></span>
+            <span class="flow-line flow-line--two"></span>
+            <span class="flow-node flow-node--one"></span>
+            <span class="flow-node flow-node--two"></span>
+            <span class="flow-node flow-node--three"></span>
+          </div>
+          <div class="project-card__content">
+            <p class="eyebrow">03 · Automation</p>
+            <h2>Автоматизация повторяющихся процессов без лишней ручной работы</h2>
+            <p>Связываем формы, таблицы, базу данных, уведомления и ИИ-инструменты в спокойную систему, которой удобно пользоваться.</p>
+            <div class="project-card__tags"><span>Интеграции</span><span>База данных</span><span>AI</span></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="card portfolio-cta">
+        <div>
+          <p class="eyebrow">Ваш проект</p>
+          <h2>Можно собрать собственный формат под вашу задачу и процессы</h2>
+        </div>
+        <div class="portfolio-cta__actions">
+          <a class="cta-btn cta-btn--primary" href="requests.html">Обсудить задачу</a>
+          <a class="cta-btn cta-btn--secondary" href="https://t.me/Frog_Oxide" target="_blank" rel="noreferrer">Написать в Telegram</a>
+        </div>
+      </section>
+    </main>
+
+    <script defer src="site-shell.js"></script>
+    <script defer src="scene.js"></script>
+  </body>
+</html>
