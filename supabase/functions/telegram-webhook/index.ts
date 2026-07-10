@@ -42,6 +42,16 @@ function requestMenu() {
         { text: "✅ Принятые", callback_data: "list:answered" },
       ],
       [{ text: "🚫 Отклонённые", callback_data: "list:rejected" }],
+      [{ text: "⭐ Управление отзывами", callback_data: "reviews:list" }],
+    ],
+  };
+}
+
+function reviewMenu() {
+  return {
+    inline_keyboard: [
+      [{ text: "🔄 Обновить отзывы", callback_data: "reviews:list" }],
+      [{ text: "📋 К заявкам", callback_data: "list:all" }],
     ],
   };
 }
@@ -66,6 +76,20 @@ function deleteConfirmation(requestId: string) {
       [{ text: "↩️ Отмена", callback_data: `view:${requestId}` }],
     ],
   };
+}
+
+function reviewDeleteConfirmation(reviewId: string) {
+  return {
+    inline_keyboard: [
+      [{ text: "🗑 Да, удалить отзыв", callback_data: `review-delete-confirm:${reviewId}` }],
+      [{ text: "↩️ К отзывам", callback_data: "reviews:list" }],
+    ],
+  };
+}
+
+function starString(rating: number) {
+  const value = Math.max(1, Math.min(5, Number(rating) || 1));
+  return "★".repeat(value) + "☆".repeat(5 - value);
 }
 
 async function isConnectedAdmin(supabase: any, chatId: number) {
@@ -187,6 +211,46 @@ async function sendRequestDetails(
   });
 }
 
+async function sendReviewList(supabase: any, botToken: string, chatId: number) {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("id, name, text, rating, created_at")
+    .order("created_at", { ascending: false })
+    .limit(15);
+  if (error) throw error;
+
+  const reviews = data || [];
+  const rows = reviews.map((review: any, index: number) => {
+    const createdAt = new Intl.DateTimeFormat("ru-RU", {
+      dateStyle: "short",
+      timeStyle: "short",
+      timeZone: "Asia/Yekaterinburg",
+    }).format(new Date(review.created_at));
+    return [
+      `<b>${index + 1}. ${escapeHtml(review.name)}</b> · ${starString(review.rating)}`,
+      `💬 ${escapeHtml(String(review.text).slice(0, 260))}`,
+      `🕒 ${createdAt}`,
+    ].join("\n");
+  });
+  const deleteButtons = reviews.map((review: any, index: number) => [
+    {
+      text: `🗑 Удалить отзыв ${index + 1}: ${String(review.name).slice(0, 24)}`,
+      callback_data: `review-delete:${review.id}`,
+    },
+  ]);
+
+  await telegramRequest(botToken, "sendMessage", {
+    chat_id: chatId,
+    text: rows.length
+      ? `<b>⭐ Отзывы на сайте</b>\n\n${rows.join("\n\n────────────\n\n")}`
+      : "<b>⭐ Отзывы на сайте</b>\n\nСейчас отзывов нет.",
+    parse_mode: "HTML",
+    reply_markup: {
+      inline_keyboard: [...deleteButtons, ...reviewMenu().inline_keyboard],
+    },
+  });
+}
+
 Deno.serve(async (request) => {
   if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
@@ -253,6 +317,59 @@ Deno.serve(async (request) => {
       await telegramRequest(botToken, "answerCallbackQuery", {
         callback_query_id: callback.id,
         text: "Список заявок обновлён",
+      });
+      return new Response("ok", { status: 200 });
+    }
+
+    if (callback && String(callback.data || "") === "reviews:list") {
+      await sendReviewList(supabase, botToken, callback.message.chat.id);
+      await telegramRequest(botToken, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: "Отзывы загружены",
+      });
+      return new Response("ok", { status: 200 });
+    }
+
+    const reviewDeleteMatch = String(callback?.data || "").match(/^review-delete:([0-9a-f-]{36})$/i);
+    if (callback && reviewDeleteMatch) {
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("name")
+        .eq("id", reviewDeleteMatch[1])
+        .maybeSingle();
+      if (error || !data) throw error || new Error("Review not found");
+
+      await telegramRequest(botToken, "sendMessage", {
+        chat_id: callback.message.chat.id,
+        text: `⚠️ <b>Удалить отзыв от ${escapeHtml(data.name)}?</b>\nЭто действие нельзя отменить.`,
+        parse_mode: "HTML",
+        reply_markup: reviewDeleteConfirmation(reviewDeleteMatch[1]),
+      });
+      await telegramRequest(botToken, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: "Подтвердите удаление отзыва",
+      });
+      return new Response("ok", { status: 200 });
+    }
+
+    const reviewDeleteConfirmMatch = String(callback?.data || "").match(/^review-delete-confirm:([0-9a-f-]{36})$/i);
+    if (callback && reviewDeleteConfirmMatch) {
+      const { data, error } = await supabase
+        .from("reviews")
+        .delete()
+        .eq("id", reviewDeleteConfirmMatch[1])
+        .select("name")
+        .maybeSingle();
+      if (error || !data) throw error || new Error("Review not found");
+
+      await telegramRequest(botToken, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: "Отзыв успешно удалён",
+      });
+      await telegramRequest(botToken, "sendMessage", {
+        chat_id: callback.message.chat.id,
+        text: `✅ <b>Успешно удалено</b>\n\nОтзыв от ${escapeHtml(data.name)} удалён с сайта.`,
+        parse_mode: "HTML",
       });
       return new Response("ok", { status: 200 });
     }
