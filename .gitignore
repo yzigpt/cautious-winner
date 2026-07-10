@@ -7,3 +7,4 @@ data/
 .tunnel.err.log
 supabase/.env
 supabase/.env.*
+supabase/.temp/
