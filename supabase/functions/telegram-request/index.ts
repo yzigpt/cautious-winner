@@ -65,6 +65,7 @@ Deno.serve(async (request) => {
       "",
       `<b>👤 Клиент:</b> ${escapeHtml(name)}`,
       `<b>💬 Задача:</b> ${escapeHtml(text)}`,
+      "<b>🏷 Статус:</b> Новая",
       `<b>🕒 Время:</b> ${escapeHtml(sentAt)}`,
       "",
       "<i>✨ Заявка сохранена в базе.</i>",
