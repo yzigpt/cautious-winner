@@ -2347,7 +2347,7 @@ body::before {
   padding-top: 98px;
 }
 
-.page--with-scene > :not(.ambient-3d):not(.scene-canvas) {
+.page--with-scene > :not(.ambient-3d):not(.scene-canvas):not(.hero__glow) {
   position: relative;
   z-index: 1;
 }
@@ -2427,7 +2427,7 @@ body::before {
   animation: ringFloatTwo 34s ease-in-out infinite alternate;
 }
 
-.page--with-scene > :not(.ambient-3d):not(.scene-canvas) {
+.page--with-scene > :not(.ambient-3d):not(.scene-canvas):not(.hero__glow) {
   z-index: 2;
 }
 
