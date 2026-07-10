@@ -3,7 +3,7 @@ import {
   getSupabase,
   getSupabaseConfigError,
   isSupabaseConfigured,
-} from "./supabase-client.js";
+} from "./supabase-client.js?v=20260710-3";
 
 const REVIEWS_TABLE = "reviews";
 const REQUESTS_TABLE = "project_requests";

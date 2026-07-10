@@ -10,8 +10,8 @@ import {
   listProjectRequests,
   updateAdminReview,
   updateProjectRequest,
-} from "./admin-api.js";
-import { escapeHtml, starString } from "./storage.js";
+} from "./admin-api.js?v=20260710-3";
+import { escapeHtml, starString } from "./storage.js?v=20260710-3";
 
 const gate = document.getElementById("admin-gate");
 const gateText = document.getElementById("admin-gate-text");
@@ -217,22 +217,52 @@ function renderReviews(reviews) {
 }
 
 async function refreshDashboard() {
-  const [overview, requestsPayload, reviewsPayload] = await Promise.all([
+  setRequestStatus("Обновляем данные кабинета...");
+
+  const [overviewResult, requestsResult, reviewsResult] = await Promise.allSettled([
     getOverview(),
     listProjectRequests("all"),
     listAdminReviews(),
   ]);
 
-  requestStateItems = requestsPayload.requests || [];
-
-  if (activeFilter === "answered" && !requestStateItems.some((item) => item.status === "answered")) {
-    activeFilter = "all";
+  if (overviewResult.status === "fulfilled") {
+    renderStats(overviewResult.value);
   }
 
-  renderStats(overview);
-  renderRequestList();
-  renderReviews(reviewsPayload.reviews || []);
-  reviewStatus.textContent = `Отзывов в базе: ${(reviewsPayload.reviews || []).length}`;
+  if (requestsResult.status === "fulfilled") {
+    requestStateItems = requestsResult.value.requests || [];
+
+    if (activeFilter === "answered" && !requestStateItems.some((item) => item.status === "answered")) {
+      activeFilter = "all";
+    }
+
+    renderRequestList();
+  } else {
+    requestList.innerHTML = `
+      <tr class="conversation-row conversation-row--empty">
+        <td colspan="3">Не удалось загрузить заявки. Обновите страницу или войдите заново.</td>
+      </tr>
+    `;
+  }
+
+  if (reviewsResult.status === "fulfilled") {
+    const reviews = reviewsResult.value.reviews || [];
+    renderReviews(reviews);
+    reviewStatus.textContent = `Отзывов в базе: ${reviews.length}`;
+  } else {
+    reviewFeed.innerHTML = `
+      <article class="review-item review-item--empty">
+        <p class="review-item__text">Не удалось загрузить отзывы. Обновите страницу или войдите заново.</p>
+      </article>
+    `;
+  }
+
+  const errors = [overviewResult, requestsResult, reviewsResult]
+    .filter((result) => result.status === "rejected")
+    .map((result) => result.reason?.message)
+    .filter(Boolean);
+
+  setRequestStatus(errors.length ? errors[0] : "Данные кабинета обновлены.");
 }
 
 function startAutoRefresh() {
