@@ -1,9 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "https://yzigpt.github.io";
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": allowedOrigin,
+  "Vary": "Origin",
   "Content-Type": "application/json; charset=utf-8",
 };
 
@@ -19,7 +21,16 @@ function clean(value: unknown, maxLength: number) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, maxLength);
 }
 
+async function hashValue(value: string) {
+  const data = new TextEncoder().encode(value);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 Deno.serve(async (request) => {
+  if (request.headers.get("origin") !== allowedOrigin) {
+    return json({ ok: false, error: "Origin not allowed" }, 403);
+  }
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
 
@@ -28,6 +39,9 @@ Deno.serve(async (request) => {
     const name = clean(body.name, 80);
     const contactDetails = clean(body.contact_details, 160);
     const text = clean(body.text, 2000);
+
+    // Bots often fill hidden fields that real visitors never see.
+    if (clean(body.website, 160)) return json({ ok: true });
 
     if (!name || !contactDetails || !text) {
       return json({ ok: false, error: "Name, contact and message are required" }, 400);
@@ -43,6 +57,14 @@ Deno.serve(async (request) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const forwardedFor = request.headers.get("x-forwarded-for") || "unknown";
+    const clientIp = forwardedFor.split(",")[0].trim();
+    const { data: isAllowed, error: rateLimitError } = await supabase.rpc("check_request_rate_limit", {
+      p_key: `request:${await hashValue(clientIp)}`,
+    });
+    if (rateLimitError) throw rateLimitError;
+    if (!isAllowed) return json({ ok: false, error: "Too many requests" }, 429);
+
     const { data: createdRequest, error: insertError } = await supabase
       .from("project_requests")
       .insert({ name, contact_details: contactDetails, text })

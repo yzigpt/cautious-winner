@@ -1,8 +1,9 @@
-import { sendMessage } from "./site-api.js?v=20260710-contact";
+import { sendMessage } from "./site-api.js?v=20260710-security";
 
 const contactForm = document.getElementById("contact-form");
 const contactNameInput = document.getElementById("contact-name");
 const contactDetailsInput = document.getElementById("contact-details");
+const contactWebsiteInput = document.getElementById("contact-website");
 const contactTextInput = document.getElementById("contact-text");
 const contactStatus = document.getElementById("contact-status");
 
@@ -26,7 +27,7 @@ if (contactForm) {
     setStatus("Отправляем заявку...");
 
     try {
-      await sendMessage({ name, contact_details: contactDetails, text });
+      await sendMessage({ name, contact_details: contactDetails, text, website: contactWebsiteInput.value });
       contactForm.reset();
       setStatus("✅ Заявка отправлена. Скоро с вами свяжутся.");
     } catch (error) {

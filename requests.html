@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://kgdqwmbpxgdwxpyflajb.supabase.co; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
     <meta name="description" content="Оставить заявку на сайт, Telegram-бота или автоматизацию" />
     <title>Оставить заявку</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -69,6 +72,10 @@
             <span>Контакт для связи</span>
             <input id="contact-details" type="text" placeholder="Telegram, телефон или email" autocomplete="email" maxlength="160" required />
           </label>
+          <label class="honeypot" aria-hidden="true" for="contact-website">
+            <span>Website</span>
+            <input id="contact-website" type="text" tabindex="-1" autocomplete="off" />
+          </label>
           <label class="field" for="contact-text">
             <span>Ваше сообщение</span>
             <textarea id="contact-text" rows="6" placeholder="Например: нужен Telegram-бот для заявок и сайт с презентацией услуг" required></textarea>
@@ -107,6 +114,6 @@
     </main>
 
     <script defer src="site-shell.js"></script>
-    <script type="module" src="requests.js?v=20260710-contact"></script>
+    <script type="module" src="requests.js?v=20260710-security"></script>
   </body>
 </html>

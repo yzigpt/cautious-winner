@@ -62,25 +62,22 @@ export async function createReview({ name, text, rating }) {
     throw new Error("Оценка должна быть от 1 до 5.");
   }
 
-  const { data, error } = await supabase
-    .from(REVIEWS_TABLE)
-    .insert(payload)
-    .select("id, name, text, rating, created_at, updated_at")
-    .single();
+  const { data, error } = await supabase.functions.invoke("public-review", { body: payload });
 
-  if (error) {
+  if (error || !data?.ok || !data.review) {
     throw new Error("Не удалось сохранить отзыв.");
   }
 
-  return normalizeReview(data);
+  return normalizeReview(data.review);
 }
 
-export async function sendMessage({ name, contact_details: contactDetails, text }) {
+export async function sendMessage({ name, contact_details: contactDetails, text, website = "" }) {
   const supabase = ensureConfigured();
   const payload = {
     name: String(name || "").trim(),
     contact_details: String(contactDetails || "").trim(),
     text: String(text || "").trim(),
+    website: String(website || "").trim(),
   };
 
   if (!payload.name || !payload.contact_details || !payload.text) {

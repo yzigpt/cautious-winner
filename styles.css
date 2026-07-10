@@ -1214,6 +1214,16 @@ h1 {
   color: rgba(244, 247, 251, 0.48);
 }
 
+.honeypot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .field input:focus,
 .field textarea:focus {
   border-color: rgba(102, 217, 255, 0.6);

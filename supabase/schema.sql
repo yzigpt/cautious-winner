@@ -59,6 +59,41 @@ create table if not exists public.telegram_admin_chats (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.request_rate_limits (
+  rate_key text primary key,
+  window_started_at timestamptz not null default timezone('utc', now()),
+  request_count integer not null default 0
+);
+
+create or replace function public.check_request_rate_limit(p_key text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  is_allowed boolean;
+begin
+  insert into public.request_rate_limits (rate_key, window_started_at, request_count)
+  values (p_key, timezone('utc', now()), 1)
+  on conflict (rate_key) do update
+  set
+    window_started_at = case
+      when public.request_rate_limits.window_started_at < timezone('utc', now()) - interval '10 minutes'
+        then timezone('utc', now())
+      else public.request_rate_limits.window_started_at
+    end,
+    request_count = case
+      when public.request_rate_limits.window_started_at < timezone('utc', now()) - interval '10 minutes'
+        then 1
+      else public.request_rate_limits.request_count + 1
+    end
+  returning request_count <= 5 into is_allowed;
+
+  return is_allowed;
+end;
+$$;
+
 create or replace function public.touch_updated_at()
 returns trigger
 language plpgsql
@@ -84,6 +119,7 @@ execute function public.touch_updated_at();
 alter table public.reviews enable row level security;
 alter table public.project_requests enable row level security;
 alter table public.telegram_admin_chats enable row level security;
+alter table public.request_rate_limits enable row level security;
 
 drop policy if exists "public can read reviews" on public.reviews;
 create policy "public can read reviews"
@@ -92,20 +128,9 @@ for select
 to anon, authenticated
 using (true);
 
-drop policy if exists "public can create reviews" on public.reviews;
-create policy "public can create reviews"
-on public.reviews
-for insert
-to anon, authenticated
-with check (true);
-
-drop policy if exists "public can create project requests" on public.project_requests;
-create policy "public can create project requests"
-on public.project_requests
-for insert
-to anon, authenticated
-with check (true);
-
 grant usage on schema public to anon, authenticated;
-grant select, insert on public.reviews to anon, authenticated;
-grant insert on public.project_requests to anon, authenticated;
+grant select on public.reviews to anon, authenticated;
+revoke insert on public.reviews from anon, authenticated;
+revoke insert on public.project_requests from anon, authenticated;
+revoke all on function public.check_request_rate_limit(text) from public, anon, authenticated;
+grant execute on function public.check_request_rate_limit(text) to service_role;

@@ -1,5 +1,5 @@
 import { escapeHtml, starString } from "./storage.js";
-import { getPublicReviews, createReview } from "./site-api.js";
+import { getPublicReviews, createReview } from "./site-api.js?v=20260710-security";
 
 const reviewForm = document.getElementById("review-form");
 const reviewNameInput = document.getElementById("review-name");
