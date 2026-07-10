@@ -2353,8 +2353,14 @@ body::before {
 }
 
 .scene-canvas--page {
+  position: fixed;
+  inset: 0;
   opacity: 0.62;
   mask-image: linear-gradient(to bottom, transparent, black 14%, black 78%, transparent);
+}
+
+.scene-canvas--webgl {
+  filter: saturate(1.18) contrast(1.08);
 }
 
 .ambient-3d--page {
