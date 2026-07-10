@@ -3012,6 +3012,11 @@ body::before {
   text-shadow: 0 0 18px rgba(102, 217, 255, 0.22);
 }
 
+.account-hero .section-copy {
+  max-width: 56ch;
+  margin-top: 22px;
+}
+
 .page--site .process-step__index {
   color: #07111f;
   background: linear-gradient(135deg, #a2edff, #66d9ff 54%, #8da0ff);
