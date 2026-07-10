@@ -48,6 +48,8 @@ Edit `supabase-config.js`:
 - `SUPABASE_ADMIN_EMAIL`
 
 Use only the public `anon` key here.
+For `SUPABASE_URL`, use the project URL in the form `https://your-project.supabase.co`.
+Do not add `/rest/v1` to the end of the address.
 
 ## 4. Free hosting
 

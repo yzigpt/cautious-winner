@@ -18,13 +18,28 @@ function isPlaceholder(value) {
   return !value || placeholderValues.includes(value);
 }
 
+function normalizeProjectUrl(value) {
+  try {
+    const url = new URL(value);
+    // Supabase client expects the project root, not the REST endpoint itself.
+    url.pathname = url.pathname.replace(/\/rest\/v1\/?$/, "") || "/";
+    url.search = "";
+    url.hash = "";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return value;
+  }
+}
+
+const projectUrl = normalizeProjectUrl(SUPABASE_URL);
+
 const configured =
   !isPlaceholder(SUPABASE_URL) &&
   !isPlaceholder(SUPABASE_ANON_KEY) &&
   !isPlaceholder(SUPABASE_ADMIN_EMAIL);
 
 const supabase = configured
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  ? createClient(projectUrl, SUPABASE_ANON_KEY, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
