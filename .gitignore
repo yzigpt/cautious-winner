@@ -5,3 +5,5 @@ data/
 .server.err.log
 .tunnel.out.log
 .tunnel.err.log
+supabase/.env
+supabase/.env.*

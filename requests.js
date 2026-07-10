@@ -1,4 +1,4 @@
-import { sendMessage } from "./site-api.js";
+import { sendMessage } from "./site-api.js?v=20260710-telegram";
 
 const contactForm = document.getElementById("contact-form");
 const contactNameInput = document.getElementById("contact-name");

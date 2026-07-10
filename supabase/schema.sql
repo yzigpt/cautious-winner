@@ -29,6 +29,14 @@ create table if not exists public.project_requests (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.telegram_admin_chats (
+  chat_id bigint primary key,
+  chat_type text not null default 'private',
+  display_name text,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -59,9 +67,16 @@ before update on public.project_requests
 for each row
 execute function public.touch_updated_at();
 
+drop trigger if exists telegram_admin_chats_touch_updated_at on public.telegram_admin_chats;
+create trigger telegram_admin_chats_touch_updated_at
+before update on public.telegram_admin_chats
+for each row
+execute function public.touch_updated_at();
+
 alter table public.admin_profiles enable row level security;
 alter table public.reviews enable row level security;
 alter table public.project_requests enable row level security;
+alter table public.telegram_admin_chats enable row level security;
 
 drop policy if exists "admin profiles select own row" on public.admin_profiles;
 create policy "admin profiles select own row"
