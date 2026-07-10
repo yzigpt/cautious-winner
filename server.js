@@ -445,10 +445,6 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, "portfolio.html");
   }
 
-  if (req.method === "GET" && (url.pathname === "/users" || url.pathname === "/users.html")) {
-    return serveFile(res, "users.html");
-  }
-
   if (req.method === "GET" && (url.pathname === "/set-password" || url.pathname === "/set-password.html")) {
     return serveFile(res, "set-password.html");
   }
@@ -917,7 +913,6 @@ const server = http.createServer(async (req, res) => {
     "/supabase-client.js": "supabase-client.js",
     "/supabase-config.js": "supabase-config.js",
     "/profile.js": "profile.js",
-    "/users.js": "users.js",
     "/set-password.js": "set-password.js",
   };
 

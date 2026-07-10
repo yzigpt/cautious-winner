@@ -40,6 +40,7 @@ function controlCenterMenu() {
         { text: "\u{2B50} \u041E\u0442\u0437\u044B\u0432\u044B", callback_data: "reviews:list" },
         { text: "\u{1F310} \u0421\u0430\u0439\u0442", callback_data: "site:menu" },
       ],
+      [{ text: "\u{1F465} \u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u0438", callback_data: "users:list:0" }],
     ],
   };
 }
@@ -82,6 +83,159 @@ async function sendControlCenter(supabase: any, botToken: string, chatId: number
     parse_mode: "HTML",
     reply_markup: controlCenterMenu(),
   });
+}
+
+type ManagedUser = {
+  id: string;
+  email: string;
+  name: string;
+  created_at: string;
+  last_sign_in_at: string | null;
+  account_status: "active" | "frozen" | "blocked";
+  ip_hash: string | null;
+  ip_status: "active" | "frozen" | "blocked";
+};
+
+function accessStatusLabel(status: string) {
+  if (status === "blocked") return "\u{1F6AB} \u0417\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D";
+  if (status === "frozen") return "\u{1F9CA} \u0417\u0430\u043C\u043E\u0440\u043E\u0436\u0435\u043D";
+  return "\u{1F7E2} \u0410\u043A\u0442\u0438\u0432\u0435\u043D";
+}
+
+async function loadManagedUsers(supabase: any) {
+  const [{ data: userPage, error: usersError }, { data: controls, error: controlsError }, { data: ipControls, error: ipError }] = await Promise.all([
+    supabase.auth.admin.listUsers({ page: 1, perPage: 200 }),
+    supabase.from("account_access_controls").select("user_id, account_status, ip_hash"),
+    supabase.from("ip_access_controls").select("ip_hash, access_status"),
+  ]);
+  if (usersError || controlsError || ipError) throw usersError || controlsError || ipError;
+  const controlsByUser = new Map((controls || []).map((item: any) => [item.user_id, item]));
+  const ipStatusByHash = new Map((ipControls || []).map((item: any) => [item.ip_hash, item.access_status]));
+  return (userPage.users || []).map((user: any): ManagedUser => {
+    const control = controlsByUser.get(user.id);
+    return {
+      id: user.id,
+      email: user.email || "",
+      name: String(user.user_metadata?.display_name || ""),
+      created_at: user.created_at,
+      last_sign_in_at: user.last_sign_in_at,
+      account_status: control?.account_status || "active",
+      ip_hash: control?.ip_hash || null,
+      ip_status: control?.ip_hash ? (ipStatusByHash.get(control.ip_hash) || "active") : "active",
+    };
+  });
+}
+
+function usersMenu(offset: number, total: number) {
+  const navigation = [] as any[];
+  if (offset > 0) navigation.push({ text: "\u{2B05}\u{FE0F} \u041D\u0430\u0437\u0430\u0434", callback_data: `users:list:${Math.max(0, offset - 10)}` });
+  if (offset + 10 < total) navigation.push({ text: "\u0412\u043F\u0435\u0440\u0451\u0434 \u27A1\u{FE0F}", callback_data: `users:list:${offset + 10}` });
+  return {
+    inline_keyboard: [
+      ...(navigation.length ? [navigation] : []),
+      [{ text: "\u25C6 Control Center", callback_data: "dashboard:home" }],
+    ],
+  };
+}
+
+async function sendUsersList(supabase: any, botToken: string, chatId: number, offset = 0) {
+  const users = await loadManagedUsers(supabase);
+  const page = users.slice(offset, offset + 10);
+  const rows = page.map((user, index) => [
+    `<b>${offset + index + 1}. ${escapeHtml(user.name || user.email || "User")}</b>`,
+    `\u{1F4E7} ${escapeHtml(user.email)}`,
+    `\u{1F512} ${accessStatusLabel(user.account_status)}  |  IP: ${accessStatusLabel(user.ip_status)}`,
+  ].join("\n"));
+  const userButtons = page.map((user, index) => [{
+    text: `\u{1F464} ${offset + index + 1}. ${(user.name || user.email || "User").slice(0, 28)}`,
+    callback_data: `user:view:${user.id}`,
+  }]);
+  await telegramRequest(botToken, "sendMessage", {
+    chat_id: chatId,
+    text: rows.length
+      ? `<b>\u{1F465} \u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u0438</b> <code>${offset + 1}-${offset + page.length} / ${users.length}</code>\n\n${rows.join("\n\n────────────\n\n")}`
+      : "<b>\u{1F465} \u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u0438</b>\n\n\u041F\u043E\u043A\u0430 \u043D\u0435\u0442 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u043E\u0432.",
+    parse_mode: "HTML",
+    reply_markup: { inline_keyboard: [...userButtons, ...usersMenu(offset, users.length).inline_keyboard] },
+  });
+}
+
+async function sendUserDetails(supabase: any, botToken: string, chatId: number, userId: string) {
+  const { data: authResult, error: authError } = await supabase.auth.admin.getUserById(userId);
+  if (authError || !authResult.user) throw authError || new Error("User not found");
+  const user = authResult.user;
+  const { data: control, error: controlError } = await supabase
+    .from("account_access_controls")
+    .select("account_status, ip_hash, last_seen_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (controlError) throw controlError;
+  const { data: ipControl, error: ipError } = control?.ip_hash
+    ? await supabase.from("ip_access_controls").select("access_status").eq("ip_hash", control.ip_hash).maybeSingle()
+    : { data: null, error: null };
+  if (ipError) throw ipError;
+  const accountStatus = control?.account_status || "active";
+  const ipStatus = ipControl?.access_status || "active";
+  const fingerprint = control?.ip_hash ? `${control.ip_hash.slice(0, 10)}...${control.ip_hash.slice(-6)}` : "\u043D\u0435\u0442 \u0430\u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u0438";
+  const createdAt = new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Yekaterinburg" }).format(new Date(user.created_at));
+  const actions = [
+    [
+      { text: "\u{1F7E2} \u0410\u043A\u0442\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u0442\u044C", callback_data: `user:account:${userId}:active` },
+      { text: "\u{1F9CA} \u0417\u0430\u043C\u043E\u0440\u043E\u0437\u0438\u0442\u044C", callback_data: `user:account:${userId}:frozen` },
+    ],
+    [{ text: "\u{1F6AB} \u0417\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0430\u043A\u043A\u0430\u0443\u043D\u0442", callback_data: `user:account:${userId}:blocked` }],
+  ] as any[];
+  if (control?.ip_hash) {
+    actions.push([
+      { text: "\u{1F7E2} \u0410\u043A\u0442\u0438\u0432\u0438\u0440\u043E\u0432\u0430\u0442\u044C IP", callback_data: `user:ip:${userId}:active` },
+      { text: "\u{1F9CA} \u0417\u0430\u043C\u043E\u0440\u043E\u0437\u0438\u0442\u044C IP", callback_data: `user:ip:${userId}:frozen` },
+    ]);
+    actions.push([{ text: "\u{1F6AB} \u0417\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u0442\u044C IP", callback_data: `user:ip:${userId}:blocked` }]);
+  }
+  actions.push([{ text: "\u{2B05}\u{FE0F} \u041A \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u044F\u043C", callback_data: "users:list:0" }]);
+  actions.push([{ text: "\u25C6 Control Center", callback_data: "dashboard:home" }]);
+
+  await telegramRequest(botToken, "sendMessage", {
+    chat_id: chatId,
+    text: [
+      "<b>\u{1F464} \u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u044C</b>",
+      "",
+      `<b>\u0418\u043C\u044F:</b> ${escapeHtml(String(user.user_metadata?.display_name || "\u0431\u0435\u0437 \u0438\u043C\u0435\u043D\u0438"))}`,
+      `<b>Email:</b> ${escapeHtml(user.email || "\u043D\u0435 \u0443\u043A\u0430\u0437\u0430\u043D")}`,
+      `<b>\u0410\u043A\u043A\u0430\u0443\u043D\u0442:</b> ${accessStatusLabel(accountStatus)}`,
+      `<b>IP:</b> ${accessStatusLabel(ipStatus)}`,
+      `<b>IP \u043E\u0442\u043F\u0435\u0447\u0430\u0442\u043E\u043A:</b> <code>${fingerprint}</code>`,
+      `<b>\u0421\u043E\u0437\u0434\u0430\u043D:</b> ${createdAt}`,
+    ].join("\n"),
+    parse_mode: "HTML",
+    reply_markup: { inline_keyboard: actions },
+  });
+}
+
+async function updateManagedUserAccess(supabase: any, userId: string, target: "account" | "ip", status: "active" | "frozen" | "blocked") {
+  const { data: current, error: currentError } = await supabase
+    .from("account_access_controls")
+    .select("account_status, ip_hash")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (currentError) throw currentError;
+  const accountStatus = target === "account" ? status : (current?.account_status || "active");
+  const { error: accountError } = await supabase.from("account_access_controls").upsert({
+    user_id: userId,
+    account_status: accountStatus,
+    ip_hash: current?.ip_hash || null,
+    last_seen_at: new Date().toISOString(),
+  });
+  if (accountError) throw accountError;
+  if (target === "ip" && current?.ip_hash) {
+    if (status === "active") {
+      const { error } = await supabase.from("ip_access_controls").delete().eq("ip_hash", current.ip_hash);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("ip_access_controls").upsert({ ip_hash: current.ip_hash, access_status: status });
+      if (error) throw error;
+    }
+  }
 }
 
 type ProjectRequest = {
@@ -499,6 +653,38 @@ Deno.serve(async (request) => {
         callback_query_id: callback.id,
         text: "\u0426\u0435\u043D\u0442\u0440 \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F \u043E\u0431\u043D\u043E\u0432\u043B\u0451\u043D",
       });
+      return new Response("ok", { status: 200 });
+    }
+
+    const usersListMatch = String(callback?.data || "").match(/^users:list:(\d+)$/i);
+    if (callback && usersListMatch) {
+      await sendUsersList(supabase, botToken, callback.message.chat.id, Number(usersListMatch[1] || 0));
+      await telegramRequest(botToken, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: "\u0421\u043F\u0438\u0441\u043E\u043A \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u0435\u0439 \u043E\u0431\u043D\u043E\u0432\u043B\u0451\u043D",
+      });
+      return new Response("ok", { status: 200 });
+    }
+
+    const userViewMatch = String(callback?.data || "").match(/^user:view:([0-9a-f-]{36})$/i);
+    if (callback && userViewMatch) {
+      await sendUserDetails(supabase, botToken, callback.message.chat.id, userViewMatch[1]);
+      await telegramRequest(botToken, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: "\u041F\u0440\u043E\u0444\u0438\u043B\u044C \u043E\u0442\u043A\u0440\u044B\u0442",
+      });
+      return new Response("ok", { status: 200 });
+    }
+
+    const userAccessMatch = String(callback?.data || "").match(/^user:(account|ip):([0-9a-f-]{36}):(active|frozen|blocked)$/i);
+    if (callback && userAccessMatch) {
+      const [, target, userId, status] = userAccessMatch;
+      await updateManagedUserAccess(supabase, userId, target as "account" | "ip", status as "active" | "frozen" | "blocked");
+      await telegramRequest(botToken, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: "\u0414\u043E\u0441\u0442\u0443\u043F \u043E\u0431\u043D\u043E\u0432\u043B\u0451\u043D",
+      });
+      await sendUserDetails(supabase, botToken, callback.message.chat.id, userId);
       return new Response("ok", { status: 200 });
     }
 
