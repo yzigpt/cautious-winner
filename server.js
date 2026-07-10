@@ -445,6 +445,11 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, "portfolio.html");
   }
 
+  // Keep old bookmarks from the removed web user-management page working.
+  if (req.method === "GET" && (url.pathname === "/users" || url.pathname === "/users.html")) {
+    return serveFile(res, "users.html");
+  }
+
   if (req.method === "GET" && (url.pathname === "/set-password" || url.pathname === "/set-password.html")) {
     return serveFile(res, "set-password.html");
   }
