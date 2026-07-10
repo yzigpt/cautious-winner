@@ -46,21 +46,31 @@ Deno.serve(async (request) => {
     }
 
     const callback = update.callback_query;
-    const match = String(callback?.data || "").match(/^request:([0-9a-f-]{36}):(answered|new)$/i);
+    const match = String(callback?.data || "").match(/^request:([0-9a-f-]{36}):(answered|new|rejected)$/i);
     if (callback && match) {
       const [, requestId, status] = match;
       await supabase
         .from("project_requests")
         .update({
           status,
-          admin_reply: status === "answered" ? "Взято в работу через Telegram" : null,
+          admin_reply:
+            status === "answered"
+              ? "Взято в работу через Telegram"
+              : status === "rejected"
+                ? "Отклонено через Telegram"
+                : null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", requestId);
 
       await telegramRequest(botToken, "answerCallbackQuery", {
         callback_query_id: callback.id,
-        text: status === "answered" ? "Заявка отмечена как взятая в работу ✅" : "Статус обновлён",
+        text:
+          status === "answered"
+            ? "Заявка отмечена как взятая в работу ✅"
+            : status === "rejected"
+              ? "Заявка отклонена 🚫"
+              : "Статус обновлён",
       });
     }
 

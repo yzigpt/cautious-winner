@@ -16,7 +16,7 @@ create table if not exists public.project_requests (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   text text not null check (char_length(trim(text)) > 0),
-  status text not null default 'new' check (status in ('new', 'answered')),
+  status text not null default 'new' check (status in ('new', 'answered', 'rejected')),
   admin_reply text,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
