@@ -9,13 +9,22 @@ This project can run for free as a static site on GitHub Pages or Cloudflare Pag
 - Buyer requests are stored in Supabase
 - The admin cabinet uses Supabase Auth
 
-## 1. Create Supabase project
+## 1. Create the permanent database
 
 1. Create a project in Supabase.
 2. Open the SQL Editor.
-3. Run the SQL from `supabase/schema.sql`.
+3. Click `New query`.
+4. Open `supabase/schema.sql` in this project, copy all its contents into the query window and click `Run`.
 
-## 2. Create admin account
+After a successful run, open `Table Editor`. You must see exactly these tables:
+
+- `reviews` - public client reviews
+- `project_requests` - requests sent from the website
+- `admin_profiles` - access list for the administrator cabinet
+
+The website already sends reviews and requests to these tables. No phone number is saved with a request.
+
+## 2. Create administrator account
 
 1. In `Authentication` -> `Users`, create a user with email and password.
 2. Copy that email into `supabase-config.js` as `SUPABASE_ADMIN_EMAIL`.

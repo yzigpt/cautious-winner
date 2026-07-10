@@ -1,3 +1,7 @@
+-- Run this entire file in Supabase: SQL Editor -> New query -> Run.
+-- It creates the permanent cloud database for public reviews, buyer requests,
+-- and the administrator cabinet.
+
 create extension if not exists pgcrypto;
 
 create table if not exists public.admin_profiles (
@@ -29,6 +33,8 @@ create or replace function public.is_admin()
 returns boolean
 language sql
 stable
+security definer
+set search_path = public
 as $$
   select exists (
     select 1
@@ -62,7 +68,7 @@ create policy "admin profiles select own row"
 on public.admin_profiles
 for select
 to authenticated
-using (user_id = auth.uid() or public.is_admin());
+using (user_id = auth.uid());
 
 drop policy if exists "public can read reviews" on public.reviews;
 create policy "public can read reviews"
