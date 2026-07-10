@@ -2332,7 +2332,7 @@ body::before {
 .page--landing {
   padding-right: 0;
   padding-left: 0;
-  gap: 0;
+  gap: clamp(40px, 5vw, 88px);
   perspective: 1400px;
   isolation: isolate;
 }
@@ -2739,6 +2739,7 @@ body::before {
 }
 
 @media (max-width: 640px) {
+  .page--landing { gap: 32px; }
   .page--landing .trust-rail { width: calc(100% - 32px); }
   .page--landing .hero-card { min-height: auto; }
   .site-header + .page--site.page--with-scene { padding-top: 90px; }
