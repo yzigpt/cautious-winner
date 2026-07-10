@@ -85,15 +85,14 @@ export async function sendMessage({ name, text }) {
     throw new Error("Заполните имя и сообщение.");
   }
 
-  const { data, error } = await supabase
-    .from(REQUESTS_TABLE)
-    .insert(payload)
-    .select("id")
-    .single();
+  // Visitors may create requests but must never be able to read them back.
+  // Do not ask Supabase for a returned row here: that would require public
+  // SELECT access and exposes buyer requests.
+  const { error } = await supabase.from(REQUESTS_TABLE).insert(payload);
 
   if (error) {
     throw new Error("Не удалось отправить заявку.");
   }
 
-  return { ok: true, requestId: data.id };
+  return { ok: true };
 }
