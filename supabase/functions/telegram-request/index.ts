@@ -43,7 +43,7 @@ Deno.serve(async (request) => {
     const { data: createdRequest, error: insertError } = await supabase
       .from("project_requests")
       .insert({ name, text })
-      .select("id, created_at")
+      .select("id, request_number, created_at")
       .single();
 
     if (insertError) throw insertError;
@@ -61,7 +61,7 @@ Deno.serve(async (request) => {
       timeZone: "Asia/Yekaterinburg",
     }).format(new Date(createdRequest.created_at));
     const message = [
-      "<b>🆕 Новая заявка с сайта</b>",
+      `<b>🆕 Новая заявка №${createdRequest.request_number} с сайта</b>`,
       "",
       `<b>👤 Клиент:</b> ${escapeHtml(name)}`,
       `<b>💬 Задача:</b> ${escapeHtml(text)}`,

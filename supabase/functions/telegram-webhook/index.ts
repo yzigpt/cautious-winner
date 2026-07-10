@@ -25,6 +25,7 @@ function statusLabel(status: string) {
 
 type ProjectRequest = {
   id: string;
+  request_number: number;
   name: string;
   text: string;
   status: string;
@@ -64,7 +65,7 @@ async function sendRequestList(
 ) {
   let query = supabase
     .from("project_requests")
-    .select("id, name, text, status, created_at")
+    .select("id, request_number, name, text, status, created_at")
     .order("created_at", { ascending: false })
     .limit(12);
 
@@ -91,7 +92,7 @@ async function sendRequestList(
     }).format(new Date(item.created_at));
     const text = escapeHtml(String(item.text || "").slice(0, 260));
     return [
-      `<b>${index + 1}. ${escapeHtml(item.name)}</b>`,
+      `<b>№${item.request_number}. ${escapeHtml(item.name)}</b>`,
       `💬 ${text}`,
       `🏷 <b>Статус:</b> ${statusLabel(item.status)}`,
       `🕒 ${createdAt}`,
@@ -104,7 +105,7 @@ async function sendRequestList(
 
   const detailButtons = requests.map((item, index) => [
     {
-      text: `👁 Подробнее: ${index + 1}. ${item.name.slice(0, 28)}`,
+      text: `👁 №${item.request_number}: ${item.name.slice(0, 28)}`,
       callback_data: `view:${item.id}`,
     },
   ]);
@@ -127,7 +128,7 @@ async function sendRequestDetails(
 ) {
   const { data, error } = await supabase
     .from("project_requests")
-    .select("id, name, text, status, admin_reply, created_at, updated_at")
+    .select("id, request_number, name, text, status, admin_reply, created_at, updated_at")
     .eq("id", requestId)
     .single();
 
@@ -144,7 +145,7 @@ async function sendRequestDetails(
     timeZone: "Asia/Yekaterinburg",
   }).format(new Date(data.updated_at || data.created_at));
   const message = [
-    "<b>👁 Просмотр заявки</b>",
+    `<b>👁 Заявка №${data.request_number}</b>`,
     "",
     `<b>👤 Клиент:</b> ${escapeHtml(data.name)}`,
     `<b>💬 Сообщение:</b>\n${escapeHtml(data.text)}`,

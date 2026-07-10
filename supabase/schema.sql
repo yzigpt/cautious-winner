@@ -22,6 +22,27 @@ create table if not exists public.project_requests (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create sequence if not exists public.project_request_number_seq;
+alter table public.project_requests add column if not exists request_number bigint;
+alter table public.project_requests alter column request_number set default nextval('public.project_request_number_seq');
+with numbered_requests as (
+  select id, row_number() over (order by created_at asc, id asc) as request_number
+  from public.project_requests
+  where request_number is null
+)
+update public.project_requests
+set request_number = numbered_requests.request_number
+from numbered_requests
+where public.project_requests.id = numbered_requests.id;
+select setval(
+  'public.project_request_number_seq',
+  coalesce((select max(request_number) from public.project_requests), 0) + 1,
+  false
+);
+alter table public.project_requests alter column request_number set not null;
+alter table public.project_requests drop constraint if exists project_requests_request_number_key;
+alter table public.project_requests add constraint project_requests_request_number_key unique (request_number);
+
 create table if not exists public.telegram_admin_chats (
   chat_id bigint primary key,
   chat_type text not null default 'private',
