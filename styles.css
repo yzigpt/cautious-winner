@@ -2355,7 +2355,7 @@ body::before {
   z-index: 2;
 }
 
-.page--landing > :not(.ambient-3d):not(.hero__glow) {
+.page--landing > :not(.ambient-3d):not(.hero__glow):not(.scene-canvas) {
   z-index: 1;
 }
 
@@ -2366,6 +2366,17 @@ body::before {
   overflow: hidden;
   pointer-events: none;
   transform-style: preserve-3d;
+}
+
+.scene-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.74;
+  pointer-events: none;
+  mask-image: linear-gradient(to bottom, black 0%, rgba(0, 0, 0, 0.82) 44%, transparent 88%);
 }
 
 .ambient-3d__orb,
@@ -2459,4 +2470,23 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
   .ambient-3d__orb,
   .ambient-3d__plane { animation: none; }
+}
+
+.is-reveal-ready .page--landing .reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.75s ease, transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.is-reveal-ready .page--landing .reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.is-reveal-ready .page--landing .hero-card.reveal {
+  transform: translateY(14px) scale(0.985);
+}
+
+.is-reveal-ready .page--landing .hero-card.reveal.is-visible {
+  transform: translateY(0) scale(1);
 }
