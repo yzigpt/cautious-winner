@@ -65,6 +65,10 @@
             <span>Ваше имя</span>
             <input id="contact-name" type="text" placeholder="Например, Анна" autocomplete="name" required />
           </label>
+          <label class="field" for="contact-details">
+            <span>Контакт для связи</span>
+            <input id="contact-details" type="text" placeholder="Telegram, телефон или email" autocomplete="email" maxlength="160" required />
+          </label>
           <label class="field" for="contact-text">
             <span>Ваше сообщение</span>
             <textarea id="contact-text" rows="6" placeholder="Например: нужен Telegram-бот для заявок и сайт с презентацией услуг" required></textarea>
@@ -103,6 +107,6 @@
     </main>
 
     <script defer src="site-shell.js"></script>
-    <script type="module" src="requests.js?v=20260710-telegram"></script>
+    <script type="module" src="requests.js?v=20260710-contact"></script>
   </body>
 </html>

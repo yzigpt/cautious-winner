@@ -15,6 +15,7 @@ create table if not exists public.reviews (
 create table if not exists public.project_requests (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  contact_details text not null check (char_length(trim(contact_details)) > 0),
   text text not null check (char_length(trim(text)) > 0),
   status text not null default 'new' check (status in ('new', 'answered', 'rejected')),
   admin_reply text,
@@ -42,6 +43,13 @@ select setval(
 alter table public.project_requests alter column request_number set not null;
 alter table public.project_requests drop constraint if exists project_requests_request_number_key;
 alter table public.project_requests add constraint project_requests_request_number_key unique (request_number);
+alter table public.project_requests add column if not exists contact_details text;
+update public.project_requests
+set contact_details = 'Не указан'
+where contact_details is null or char_length(trim(contact_details)) = 0;
+alter table public.project_requests alter column contact_details set not null;
+alter table public.project_requests drop constraint if exists project_requests_contact_details_check;
+alter table public.project_requests add constraint project_requests_contact_details_check check (char_length(trim(contact_details)) > 0);
 
 create table if not exists public.telegram_admin_chats (
   chat_id bigint primary key,

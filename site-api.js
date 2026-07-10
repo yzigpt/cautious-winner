@@ -75,15 +75,16 @@ export async function createReview({ name, text, rating }) {
   return normalizeReview(data);
 }
 
-export async function sendMessage({ name, text }) {
+export async function sendMessage({ name, contact_details: contactDetails, text }) {
   const supabase = ensureConfigured();
   const payload = {
     name: String(name || "").trim(),
+    contact_details: String(contactDetails || "").trim(),
     text: String(text || "").trim(),
   };
 
-  if (!payload.name || !payload.text) {
-    throw new Error("Заполните имя и сообщение.");
+  if (!payload.name || !payload.contact_details || !payload.text) {
+    throw new Error("Заполните имя, контакт и сообщение.");
   }
 
   if (TELEGRAM_REQUEST_FUNCTION_ENABLED) {

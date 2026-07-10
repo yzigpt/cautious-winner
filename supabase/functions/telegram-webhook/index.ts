@@ -27,6 +27,7 @@ type ProjectRequest = {
   id: string;
   request_number: number;
   name: string;
+  contact_details: string;
   text: string;
   status: string;
   created_at: string;
@@ -85,7 +86,7 @@ async function sendRequestList(
 ) {
   let query = supabase
     .from("project_requests")
-    .select("id, request_number, name, text, status, created_at")
+    .select("id, request_number, name, contact_details, text, status, created_at")
     .order("created_at", { ascending: false })
     .limit(12);
 
@@ -113,6 +114,7 @@ async function sendRequestList(
     const text = escapeHtml(String(item.text || "").slice(0, 260));
     return [
       `<b>№${item.request_number}. ${escapeHtml(item.name)}</b>`,
+      `📞 ${escapeHtml(item.contact_details)}`,
       `💬 ${text}`,
       `🏷 <b>Статус:</b> ${statusLabel(item.status)}`,
       `🕒 ${createdAt}`,
@@ -148,7 +150,7 @@ async function sendRequestDetails(
 ) {
   const { data, error } = await supabase
     .from("project_requests")
-    .select("id, request_number, name, text, status, admin_reply, created_at, updated_at")
+    .select("id, request_number, name, contact_details, text, status, admin_reply, created_at, updated_at")
     .eq("id", requestId)
     .single();
 
@@ -168,6 +170,7 @@ async function sendRequestDetails(
     `<b>👁 Заявка №${data.request_number}</b>`,
     "",
     `<b>👤 Клиент:</b> ${escapeHtml(data.name)}`,
+    `<b>📞 Контакт:</b> ${escapeHtml(data.contact_details)}`,
     `<b>💬 Сообщение:</b>\n${escapeHtml(data.text)}`,
     `<b>🏷 Статус:</b> ${statusLabel(data.status)}`,
     `<b>🕒 Получена:</b> ${createdAt}`,

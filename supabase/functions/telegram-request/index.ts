@@ -26,9 +26,12 @@ Deno.serve(async (request) => {
   try {
     const body = await request.json();
     const name = clean(body.name, 80);
+    const contactDetails = clean(body.contact_details, 160);
     const text = clean(body.text, 2000);
 
-    if (!name || !text) return json({ ok: false, error: "Name and message are required" }, 400);
+    if (!name || !contactDetails || !text) {
+      return json({ ok: false, error: "Name, contact and message are required" }, 400);
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -42,7 +45,7 @@ Deno.serve(async (request) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const { data: createdRequest, error: insertError } = await supabase
       .from("project_requests")
-      .insert({ name, text })
+      .insert({ name, contact_details: contactDetails, text })
       .select("id, request_number, created_at")
       .single();
 
@@ -64,6 +67,7 @@ Deno.serve(async (request) => {
       `<b>🆕 Новая заявка №${createdRequest.request_number} с сайта</b>`,
       "",
       `<b>👤 Клиент:</b> ${escapeHtml(name)}`,
+      `<b>📞 Контакт:</b> ${escapeHtml(contactDetails)}`,
       `<b>💬 Задача:</b> ${escapeHtml(text)}`,
       "<b>🏷 Статус:</b> Новая",
       `<b>🕒 Время:</b> ${escapeHtml(sentAt)}`,

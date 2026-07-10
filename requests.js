@@ -1,7 +1,8 @@
-import { sendMessage } from "./site-api.js?v=20260710-telegram";
+import { sendMessage } from "./site-api.js?v=20260710-contact";
 
 const contactForm = document.getElementById("contact-form");
 const contactNameInput = document.getElementById("contact-name");
+const contactDetailsInput = document.getElementById("contact-details");
 const contactTextInput = document.getElementById("contact-text");
 const contactStatus = document.getElementById("contact-status");
 
@@ -14,17 +15,18 @@ if (contactForm) {
     event.preventDefault();
 
     const name = contactNameInput.value.trim();
+    const contactDetails = contactDetailsInput.value.trim();
     const text = contactTextInput.value.trim();
 
-    if (!name || !text) {
-      setStatus("Пожалуйста, заполните имя и сообщение.");
+    if (!name || !contactDetails || !text) {
+      setStatus("Пожалуйста, заполните имя, контакт и сообщение.");
       return;
     }
 
     setStatus("Отправляем заявку...");
 
     try {
-      await sendMessage({ name, text });
+      await sendMessage({ name, contact_details: contactDetails, text });
       contactForm.reset();
       setStatus("✅ Заявка отправлена. Скоро с вами свяжутся.");
     } catch (error) {
