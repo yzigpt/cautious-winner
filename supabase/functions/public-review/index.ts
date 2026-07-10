@@ -32,7 +32,6 @@ Deno.serve(async (request) => {
 
   try {
     const body = await request.json();
-    const name = clean(body.name, 80) || "Гость";
     const text = clean(body.text, 2000);
     const rating = Number(body.rating || 0);
     if (clean(body.website, 160)) return json({ ok: true });
@@ -45,6 +44,14 @@ Deno.serve(async (request) => {
     if (!supabaseUrl || !serviceRoleKey) return json({ ok: false, error: "Configuration missing" }, 503);
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+    if (!accessToken) return json({ ok: false, error: "Authentication required" }, 401);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(accessToken);
+    if (userError || !user) return json({ ok: false, error: "Authentication required" }, 401);
+    const name = clean(user.user_metadata?.display_name, 80) || user.email || "Пользователь";
     const forwardedFor = request.headers.get("x-forwarded-for") || "unknown";
     const clientIp = forwardedFor.split(",")[0].trim();
     const { data: isAllowed, error: rateLimitError } = await supabase.rpc("check_request_rate_limit", {
@@ -55,7 +62,7 @@ Deno.serve(async (request) => {
 
     const { data: review, error } = await supabase
       .from("reviews")
-      .insert({ name, text, rating })
+      .insert({ user_id: user.id, name, text, rating })
       .select("id, name, text, rating, created_at, updated_at")
       .single();
     if (error) throw error;

@@ -6,6 +6,7 @@ create extension if not exists pgcrypto;
 create table if not exists public.reviews (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete set null,
+  user_id uuid references auth.users(id) on delete set null,
   name text not null,
   text text not null check (char_length(trim(text)) > 0),
   rating integer not null check (rating between 1 and 5),
@@ -27,6 +28,7 @@ create table if not exists public.project_requests (
 create sequence if not exists public.project_request_number_seq;
 alter table public.project_requests add column if not exists request_number bigint;
 alter table public.project_requests add column if not exists user_id uuid references auth.users(id) on delete set null;
+alter table public.reviews add column if not exists user_id uuid references auth.users(id) on delete set null;
 alter table public.project_requests alter column request_number set default nextval('public.project_request_number_seq');
 with numbered_requests as (
   select id, row_number() over (order by created_at asc, id asc) as request_number

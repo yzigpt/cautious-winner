@@ -62,7 +62,17 @@ export async function createReview({ name, text, rating }) {
     throw new Error("Оценка должна быть от 1 до 5.");
   }
 
-  const { data, error } = await supabase.functions.invoke("public-review", { body: payload });
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error("Войдите в личный кабинет, чтобы оставить отзыв.");
+  }
+
+  const { data, error } = await supabase.functions.invoke("public-review", {
+    body: payload,
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
 
   if (error || !data?.ok || !data.review) {
     throw new Error("Не удалось сохранить отзыв.");
