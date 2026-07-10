@@ -2337,6 +2337,43 @@ body::before {
   isolation: isolate;
 }
 
+/* The inner pages share the same 3D language without competing with forms and text. */
+.page--with-scene {
+  isolation: isolate;
+  perspective: 1400px;
+}
+
+.page--with-scene > :not(.ambient-3d):not(.scene-canvas) {
+  position: relative;
+  z-index: 1;
+}
+
+.scene-canvas--page {
+  opacity: 0.42;
+  mask-image: linear-gradient(to bottom, transparent, black 14%, black 78%, transparent);
+}
+
+.ambient-3d--page {
+  position: fixed;
+  inset: 0;
+  opacity: 0.5;
+}
+
+.ambient-3d--page .ambient-3d__orb--cyan {
+  width: min(34vw, 480px);
+  right: -12vw;
+}
+
+.ambient-3d--page .ambient-3d__orb--gold {
+  width: min(22vw, 320px);
+  left: -8vw;
+}
+
+.ambient-3d--page .ambient-3d__plane {
+  width: min(34vw, 520px);
+  opacity: 0.72;
+}
+
 .page--landing > .card {
   width: 100%;
   border-right: 0;

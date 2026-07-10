@@ -1,4 +1,24 @@
-const canvas = document.getElementById("scene-canvas");
+let canvas = document.getElementById("scene-canvas");
+const page = document.querySelector(".page--site");
+
+if (!canvas && page) {
+  page.classList.add("page--with-scene");
+
+  const ambient = document.createElement("div");
+  ambient.className = "ambient-3d ambient-3d--page";
+  ambient.setAttribute("aria-hidden", "true");
+  ambient.innerHTML = `
+    <span class="ambient-3d__orb ambient-3d__orb--cyan"></span>
+    <span class="ambient-3d__orb ambient-3d__orb--gold"></span>
+    <span class="ambient-3d__plane ambient-3d__plane--one"></span>
+    <span class="ambient-3d__plane ambient-3d__plane--two"></span>
+  `;
+
+  canvas = document.createElement("canvas");
+  canvas.className = "scene-canvas scene-canvas--page";
+  canvas.setAttribute("aria-hidden", "true");
+  page.prepend(ambient, canvas);
+}
 
 if (canvas && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
   const context = canvas.getContext("2d");
