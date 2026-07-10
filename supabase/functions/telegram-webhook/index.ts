@@ -379,14 +379,9 @@ function starString(rating: number) {
   return "★".repeat(value) + "☆".repeat(5 - value);
 }
 
-async function isConnectedAdmin(supabase: any, chatId: number) {
-  const { data, error } = await supabase
-    .from("telegram_admin_chats")
-    .select("chat_id")
-    .eq("chat_id", chatId)
-    .maybeSingle();
-  if (error) throw error;
-  return Boolean(data);
+async function isConnectedAdmin(_supabase: any, chatId: number) {
+  const configuredChatId = Number(Deno.env.get("TELEGRAM_ADMIN_CHAT_ID"));
+  return Number.isSafeInteger(configuredChatId) && configuredChatId === chatId;
 }
 
 async function sendRequestList(
@@ -576,6 +571,13 @@ Deno.serve(async (request) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const message = update.message;
     const command = String(message?.text || "").trim().toLowerCase().split(/\s+/)[0].split("@")[0];
+    if (message?.chat && !await isConnectedAdmin(supabase, message.chat.id)) {
+      await telegramRequest(botToken, "sendMessage", {
+        chat_id: message.chat.id,
+        text: "\u{1F512} \u042D\u0442\u043E\u0442 \u0431\u043E\u0442 \u0434\u043E\u0441\u0442\u0443\u043F\u0435\u043D \u0442\u043E\u043B\u044C\u043A\u043E \u0430\u0434\u043C\u0438\u043D\u0438\u0441\u0442\u0440\u0430\u0442\u043E\u0440\u0443.",
+      });
+      return new Response("ok", { status: 200 });
+    }
     if (message?.chat && ["/start", "/help"].includes(command)) {
       const chat = message.chat;
       const isKnownChat = await isConnectedAdmin(supabase, chat.id);
