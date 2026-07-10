@@ -2374,9 +2374,19 @@ body::before {
   z-index: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.74;
+  opacity: 0.92;
   pointer-events: none;
   mask-image: linear-gradient(to bottom, black 0%, rgba(0, 0, 0, 0.82) 44%, transparent 88%);
+}
+
+.hero-card .hero-topline,
+.hero-card .hero-grid,
+.hero-card .feature-grid {
+  z-index: 2;
+}
+
+.hero-card::before {
+  z-index: 1;
 }
 
 .ambient-3d__orb,
