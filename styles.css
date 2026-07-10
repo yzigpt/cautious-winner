@@ -2343,6 +2343,10 @@ body::before {
   perspective: 1400px;
 }
 
+.site-header + .page--site.page--with-scene {
+  padding-top: 98px;
+}
+
 .page--with-scene > :not(.ambient-3d):not(.scene-canvas) {
   position: relative;
   z-index: 1;
@@ -2572,6 +2576,7 @@ body::before {
 @media (max-width: 640px) {
   .page--landing .trust-rail { width: calc(100% - 32px); }
   .page--landing .hero-card { min-height: auto; }
+  .site-header + .page--site.page--with-scene { padding-top: 90px; }
   .ambient-3d__orb--cyan { width: 92vw; right: -45vw; }
   .ambient-3d__orb--gold { width: 76vw; left: -38vw; }
   .ambient-3d__plane { width: 100vw; }
