@@ -1,4 +1,4 @@
-import { sendMessage } from "./site-api.js?v=20260710-account";
+import { sendMessage } from "./site-api.js?v=20260710-guest-requests";
 import { getCurrentSession } from "./auth.js";
 
 const contactForm = document.getElementById("contact-form");
@@ -34,10 +34,7 @@ if (contactForm) {
   const session = await getCurrentSession();
   const savedCooldown = Number(localStorage.getItem(cooldownKey) || 0);
   if (savedCooldown > Date.now()) startCooldown(savedCooldown);
-  if (!session) {
-    submitButton.disabled = true;
-    contactStatus.innerHTML = 'Чтобы отправить заявку и видеть её статус, <a href="profile.html">войдите или зарегистрируйтесь</a>.';
-  } else if (session.user.user_metadata?.display_name && !contactNameInput.value) {
+  if (session?.user.user_metadata?.display_name && !contactNameInput.value) {
     contactNameInput.value = session.user.user_metadata.display_name;
   }
 

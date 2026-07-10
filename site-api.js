@@ -98,12 +98,12 @@ export async function sendMessage({ name, contact_details: contactDetails, text,
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      throw new Error("Войдите в личный кабинет, чтобы отправить заявку и отслеживать её статус.");
-    }
     const { data: telegramResult, error: telegramError } = await supabase.functions.invoke(
       "telegram-request",
-      { body: payload, headers: { Authorization: `Bearer ${session.access_token}` } }
+      {
+        body: payload,
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      }
     );
 
     if (telegramError || !telegramResult?.ok) {
