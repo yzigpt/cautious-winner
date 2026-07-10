@@ -2484,13 +2484,22 @@ body::before {
 }
 
 .hero-card .ambient-3d {
-  z-index: 3;
+  z-index: 1;
 }
 
 .hero-card .hero-topline,
 .hero-card .hero-grid,
 .hero-card .feature-grid {
-  z-index: 4;
+  z-index: 2;
+}
+
+.hero-card .cta-row,
+.hero-card .cta-btn {
+  z-index: 3;
+}
+
+.hero-card::before {
+  z-index: 0;
 }
 
 .page--with-scene > :not(.ambient-3d):not(.scene-canvas):not(.hero__glow) {
