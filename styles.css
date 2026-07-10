@@ -2502,6 +2502,75 @@ body::before {
   z-index: 0;
 }
 
+/* Every inner-page card receives a contained 3D object behind its content. */
+.page--with-scene .card--with-model {
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.page--with-scene .card--with-model > :not(.card-3d) {
+  position: relative;
+  z-index: 1;
+}
+
+.card-3d {
+  position: absolute;
+  top: -54px;
+  right: -42px;
+  z-index: 0;
+  display: block;
+  width: 188px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(174, 239, 255, 0.64);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(231, 253, 255, 0.32), rgba(102, 217, 255, 0.06) 50%, rgba(124, 140, 255, 0.18));
+  box-shadow:
+    inset 0 0 46px rgba(102, 217, 255, 0.18),
+    0 34px 70px rgba(0, 0, 0, 0.2),
+    0 0 54px rgba(102, 217, 255, 0.22);
+  opacity: 0.94;
+  pointer-events: none;
+  transform: rotateX(62deg) rotateY(-28deg) rotateZ(18deg);
+  transform-style: preserve-3d;
+  animation: cardModelFloat 24s ease-in-out infinite alternate;
+}
+
+.card-3d::before,
+.card-3d::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: inherit;
+  border-radius: inherit;
+  background: inherit;
+  opacity: 0.66;
+}
+
+.card-3d::before {
+  transform: rotateY(90deg) translateZ(94px);
+}
+
+.card-3d::after {
+  transform: rotateX(90deg) translateZ(94px);
+}
+
+.card-3d--gold {
+  top: auto;
+  right: auto;
+  bottom: -72px;
+  left: -38px;
+  width: 164px;
+  border-color: rgba(255, 228, 165, 0.58);
+  background:
+    linear-gradient(135deg, rgba(255, 248, 220, 0.3), rgba(246, 211, 122, 0.06) 50%, rgba(102, 217, 255, 0.14));
+  box-shadow:
+    inset 0 0 42px rgba(246, 211, 122, 0.16),
+    0 30px 60px rgba(0, 0, 0, 0.18),
+    0 0 48px rgba(246, 211, 122, 0.18);
+  animation-delay: -9s;
+}
+
 .page--with-scene > :not(.ambient-3d):not(.scene-canvas):not(.hero__glow) {
   z-index: 2;
 }
@@ -2658,6 +2727,11 @@ body::before {
   to { transform: rotateX(70deg) rotateY(-26deg) rotateZ(16deg) translate3d(5vw, -6vh, 100px); }
 }
 
+@keyframes cardModelFloat {
+  from { transform: rotateX(62deg) rotateY(-28deg) rotateZ(18deg) translate3d(0, 0, -40px); }
+  to { transform: rotateX(42deg) rotateY(22deg) rotateZ(-8deg) translate3d(-18px, 24px, 100px); }
+}
+
 @media (max-width: 640px) {
   .page--landing .trust-rail { width: calc(100% - 32px); }
   .page--landing .hero-card { min-height: auto; }
@@ -2672,13 +2746,16 @@ body::before {
   .ambient-3d__ring--two { width: 58vw; top: 68%; left: -16vw; }
   .ambient-3d__cube--one { width: 92px; top: 22%; right: 8%; }
   .ambient-3d__cube--two { width: 72px; top: 70%; left: 8%; }
+  .card-3d { width: 132px; top: -44px; right: -34px; }
+  .card-3d--gold { width: 118px; top: auto; right: auto; bottom: -52px; left: -30px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ambient-3d__orb,
   .ambient-3d__plane,
   .ambient-3d__ring,
-  .ambient-3d__cube { animation: none; }
+  .ambient-3d__cube,
+  .card-3d { animation: none; }
 }
 
 .is-reveal-ready .page--landing .reveal {

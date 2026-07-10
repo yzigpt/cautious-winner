@@ -30,6 +30,17 @@ if (ambientLayer && !ambientLayer.querySelector(".ambient-3d__cube")) {
   );
 }
 
+if (page && page.classList.contains("page--with-scene")) {
+  const cards = Array.from(page.querySelectorAll(".card"));
+  cards.forEach((card, index) => {
+    card.classList.add("card--with-model");
+    if (!card.querySelector(".card-3d")) {
+      const variant = index % 2 === 0 ? "card-3d--cyan" : "card-3d--gold";
+      card.insertAdjacentHTML("beforeend", `<span class="card-3d ${variant}" aria-hidden="true"></span>`);
+    }
+  });
+}
+
 if (canvas && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
   const context = canvas.getContext("2d");
   const isCompact = window.matchMedia("(max-width: 640px)").matches;
