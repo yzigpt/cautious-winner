@@ -1009,6 +1009,12 @@ h1 {
   border: 1px solid rgba(74, 222, 128, 0.24);
 }
 
+.status-pill--completed {
+  color: #d7edff;
+  background: rgba(102, 180, 255, 0.16);
+  border: 1px solid rgba(102, 180, 255, 0.28);
+}
+
 .cabinet-chat {
   display: grid;
   gap: 16px;
@@ -1299,6 +1305,7 @@ h1 {
 
 .profile-request__status--answered { background: rgba(74, 222, 128, 0.16); }
 .profile-request__status--rejected { background: rgba(255, 99, 132, 0.16); }
+.profile-request__status--completed { background: rgba(102, 180, 255, 0.16); }
 
 .field input:focus,
 .field textarea:focus {

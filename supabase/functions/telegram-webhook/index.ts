@@ -18,6 +18,7 @@ function escapeHtml(value: string) {
 }
 
 function statusLabel(status: string) {
+  if (status === "completed") return "\u{1F3C1} \u0417\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0430";
   if (status === "answered") return "✅ Принята";
   if (status === "rejected") return "🚫 Отклонена";
   return "🆕 Новая";
@@ -106,6 +107,22 @@ function requestActions(requestId: string) {
   };
 }
 
+function requestMenuWithCompletion() {
+  const menu = requestMenu();
+  menu.inline_keyboard.splice(2, 0, [
+    { text: "\u{1F3C1} \u0417\u0430\u0432\u0435\u0440\u0448\u0451\u043D\u043D\u044B\u0435", callback_data: "list:completed:0" },
+  ]);
+  return menu;
+}
+
+function requestActionsWithCompletion(requestId: string) {
+  const actions = requestActions(requestId);
+  actions.inline_keyboard.splice(2, 0, [
+    { text: "\u{1F3C1} \u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044C", callback_data: `request:${requestId}:completed` },
+  ]);
+  return actions;
+}
+
 function deleteConfirmation(requestId: string) {
   return {
     inline_keyboard: [
@@ -143,7 +160,7 @@ async function sendRequestList(
   supabase: any,
   botToken: string,
   chatId: number,
-  filter: "all" | "new" | "answered" | "rejected",
+  filter: "all" | "new" | "answered" | "rejected" | "completed",
   offset = 0
 ) {
   let query = supabase
@@ -159,7 +176,9 @@ async function sendRequestList(
   const requests = (data || []) as ProjectRequest[];
 
   const heading =
-    filter === "all"
+    filter === "completed"
+      ? "\u{1F3C1} <b>\u0417\u0430\u0432\u0435\u0440\u0448\u0451\u043D\u043D\u044B\u0435 \u0437\u0430\u044F\u0432\u043A\u0438</b>"
+      : filter === "all"
       ? "📋 <b>Все заявки</b>"
       : filter === "answered"
         ? "✅ <b>Принятые заявки</b>"
@@ -215,7 +234,7 @@ async function sendRequestList(
       inline_keyboard: [
         ...detailButtons,
         ...(paginationButtons.length ? [paginationButtons] : []),
-        ...requestMenu().inline_keyboard,
+        ...requestMenuWithCompletion().inline_keyboard,
       ],
     },
   });
@@ -262,7 +281,7 @@ async function sendRequestDetails(
     chat_id: chatId,
     text: message.join("\n"),
     parse_mode: "HTML",
-    reply_markup: requestActions(data.id),
+    reply_markup: requestActionsWithCompletion(data.id),
   });
 }
 
@@ -367,7 +386,7 @@ Deno.serve(async (request) => {
         chat_id: chat.id,
         text: "<b>✨ Frog Oxide Control Center</b>\n\nВаш аккуратный центр управления сайтом. Новые заявки приходят сюда мгновенно, а статусы синхронизируются с личными кабинетами клиентов.\n\n<b>Быстрые команды:</b>\n/requests - заявки\n/reviews - отзывы\n/site - управление сайтом",
         parse_mode: "HTML",
-        reply_markup: requestMenu(),
+        reply_markup: requestMenuWithCompletion(),
       });
     }
 
@@ -381,9 +400,9 @@ Deno.serve(async (request) => {
       return new Response("ok", { status: 200 });
     }
 
-    const listMatch = String(callback?.data || "").match(/^list:(all|new|answered|rejected)(?::(\d+))?$/i);
+    const listMatch = String(callback?.data || "").match(/^list:(all|new|answered|rejected|completed)(?::(\d+))?$/i);
     if (callback && listMatch) {
-      const filter = listMatch[1].toLowerCase() as "all" | "new" | "answered" | "rejected";
+      const filter = listMatch[1].toLowerCase() as "all" | "new" | "answered" | "rejected" | "completed";
       const offset = Number(listMatch[2] || 0);
       await sendRequestList(supabase, botToken, callback.message.chat.id, filter, offset);
       await telegramRequest(botToken, "answerCallbackQuery", {
@@ -529,7 +548,7 @@ Deno.serve(async (request) => {
       return new Response("ok", { status: 200 });
     }
 
-    const match = String(callback?.data || "").match(/^request:([0-9a-f-]{36}):(answered|new|rejected)$/i);
+    const match = String(callback?.data || "").match(/^request:([0-9a-f-]{36}):(answered|new|rejected|completed)$/i);
     if (callback && match) {
       const [, requestId, status] = match;
       const { data: updatedRequest, error: updateError } = await supabase
@@ -577,7 +596,7 @@ Deno.serve(async (request) => {
           `<b>🕒 Время:</b> ${createdAt}`,
         ].join("\n"),
         parse_mode: "HTML",
-        reply_markup: requestActions(updatedRequest.id),
+        reply_markup: requestActionsWithCompletion(updatedRequest.id),
       });
     }
 

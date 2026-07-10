@@ -19,7 +19,7 @@ create table if not exists public.project_requests (
   name text not null,
   contact_details text not null check (char_length(trim(contact_details)) > 0),
   text text not null check (char_length(trim(text)) > 0),
-  status text not null default 'new' check (status in ('new', 'answered', 'rejected')),
+  status text not null default 'new' check (status in ('new', 'answered', 'rejected', 'completed')),
   admin_reply text,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
@@ -54,6 +54,8 @@ where contact_details is null or char_length(trim(contact_details)) = 0;
 alter table public.project_requests alter column contact_details set not null;
 alter table public.project_requests drop constraint if exists project_requests_contact_details_check;
 alter table public.project_requests add constraint project_requests_contact_details_check check (char_length(trim(contact_details)) > 0);
+alter table public.project_requests drop constraint if exists project_requests_status_check;
+alter table public.project_requests add constraint project_requests_status_check check (status in ('new', 'answered', 'rejected', 'completed'));
 
 create table if not exists public.telegram_admin_chats (
   chat_id bigint primary key,

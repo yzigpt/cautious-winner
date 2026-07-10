@@ -11,6 +11,7 @@ const requestList = document.getElementById("my-requests");
 let realtimeChannel = null;
 
 function statusLabel(status) {
+  if (status === "completed") return "\u{1F3C1} \u0417\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0430";
   if (status === "answered") return "✅ Принята";
   if (status === "rejected") return "🚫 Отклонена";
   return "🆕 Новая";
