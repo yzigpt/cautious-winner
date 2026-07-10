@@ -52,9 +52,29 @@ function requestActions(requestId: string) {
         { text: "✅ Взять в работу", callback_data: `request:${requestId}:answered` },
         { text: "🚫 Отклонить", callback_data: `request:${requestId}:rejected` },
       ],
+      [{ text: "🗑 Удалить заявку", callback_data: `delete:${requestId}` }],
       [{ text: "📋 К списку заявок", callback_data: "list:all" }],
     ],
   };
+}
+
+function deleteConfirmation(requestId: string) {
+  return {
+    inline_keyboard: [
+      [{ text: "🗑 Да, удалить навсегда", callback_data: `delete-confirm:${requestId}` }],
+      [{ text: "↩️ Отмена", callback_data: `view:${requestId}` }],
+    ],
+  };
+}
+
+async function isConnectedAdmin(supabase: any, chatId: number) {
+  const { data, error } = await supabase
+    .from("telegram_admin_chats")
+    .select("chat_id")
+    .eq("chat_id", chatId)
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data);
 }
 
 async function sendRequestList(
@@ -183,11 +203,27 @@ Deno.serve(async (request) => {
     const message = update.message;
     if (message?.chat && (String(message.text || "").startsWith("/start") || ["/requests", "/заявки"].includes(String(message.text || "").toLowerCase()))) {
       const chat = message.chat;
-      await supabase.from("telegram_admin_chats").upsert({
-        chat_id: chat.id,
-        chat_type: chat.type,
-        display_name: [chat.first_name, chat.last_name].filter(Boolean).join(" ") || chat.username || "Admin",
-      });
+      const isKnownChat = await isConnectedAdmin(supabase, chat.id);
+      const { count, error: chatCountError } = await supabase
+        .from("telegram_admin_chats")
+        .select("*", { count: "exact", head: true });
+      if (chatCountError) throw chatCountError;
+
+      if (!isKnownChat && count) {
+        await telegramRequest(botToken, "sendMessage", {
+          chat_id: chat.id,
+          text: "Доступ к этому боту ограничен.",
+        });
+        return new Response("ok", { status: 200 });
+      }
+
+      if (!isKnownChat) {
+        await supabase.from("telegram_admin_chats").upsert({
+          chat_id: chat.id,
+          chat_type: chat.type,
+          display_name: [chat.first_name, chat.last_name].filter(Boolean).join(" ") || chat.username || "Admin",
+        });
+      }
 
       await telegramRequest(botToken, "sendMessage", {
         chat_id: chat.id,
@@ -198,6 +234,15 @@ Deno.serve(async (request) => {
     }
 
     const callback = update.callback_query;
+    if (callback && !await isConnectedAdmin(supabase, callback.message.chat.id)) {
+      await telegramRequest(botToken, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: "Нет доступа к заявкам",
+        show_alert: true,
+      });
+      return new Response("ok", { status: 200 });
+    }
+
     const listMatch = String(callback?.data || "").match(/^list:(all|new|answered|rejected)$/i);
     if (callback && listMatch) {
       const filter = listMatch[1].toLowerCase() as "all" | "new" | "answered" | "rejected";
@@ -205,6 +250,49 @@ Deno.serve(async (request) => {
       await telegramRequest(botToken, "answerCallbackQuery", {
         callback_query_id: callback.id,
         text: "Список заявок обновлён",
+      });
+      return new Response("ok", { status: 200 });
+    }
+
+    const deleteMatch = String(callback?.data || "").match(/^delete:([0-9a-f-]{36})$/i);
+    if (callback && deleteMatch) {
+      const { data, error } = await supabase
+        .from("project_requests")
+        .select("request_number")
+        .eq("id", deleteMatch[1])
+        .maybeSingle();
+      if (error || !data) throw error || new Error("Request not found");
+
+      await telegramRequest(botToken, "sendMessage", {
+        chat_id: callback.message.chat.id,
+        text: `⚠️ <b>Удалить заявку №${data.request_number}?</b>\nЭто действие нельзя отменить.`,
+        parse_mode: "HTML",
+        reply_markup: deleteConfirmation(deleteMatch[1]),
+      });
+      await telegramRequest(botToken, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: "Подтвердите удаление",
+      });
+      return new Response("ok", { status: 200 });
+    }
+
+    const deleteConfirmMatch = String(callback?.data || "").match(/^delete-confirm:([0-9a-f-]{36})$/i);
+    if (callback && deleteConfirmMatch) {
+      const { data, error } = await supabase
+        .from("project_requests")
+        .delete()
+        .eq("id", deleteConfirmMatch[1])
+        .select("request_number")
+        .maybeSingle();
+      if (error || !data) throw error || new Error("Request not found");
+
+      await telegramRequest(botToken, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: `Заявка №${data.request_number} удалена`,
+      });
+      await telegramRequest(botToken, "sendMessage", {
+        chat_id: callback.message.chat.id,
+        text: `🗑 Заявка №${data.request_number} удалена из базы.`,
       });
       return new Response("ok", { status: 200 });
     }
