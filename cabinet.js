@@ -44,6 +44,14 @@ let selectedRequestId = null;
 let activeFilter = "new";
 let refreshTimer = null;
 
+function getGateFocusableElements() {
+  return Array.from(
+    gate.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]'
+    )
+  );
+}
+
 function setGateMessage(message) {
   gateText.textContent = message;
 }
@@ -55,6 +63,7 @@ function setRequestStatus(message) {
 function openGate() {
   gate.classList.add("is-open");
   gate.setAttribute("aria-hidden", "false");
+  window.requestAnimationFrame(() => adminLoginPassword.focus());
 }
 
 function closeGate() {
@@ -349,6 +358,24 @@ reviewFeed.addEventListener("click", async (event) => {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && admin) {
     refreshDashboard().catch(() => {});
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (!gate.classList.contains("is-open") || event.key !== "Tab") return;
+
+  const focusable = getGateFocusableElements();
+  if (!focusable.length) return;
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
   }
 });
 

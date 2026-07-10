@@ -1220,6 +1220,21 @@ h1 {
   box-shadow: 0 0 0 4px rgba(102, 217, 255, 0.12);
 }
 
+/* Keep keyboard navigation as clear as mouse interaction. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid #8ee7ff;
+  outline-offset: 4px;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible,
+.field select:focus-visible {
+  border-color: #8ee7ff;
+  box-shadow:
+    0 0 0 4px rgba(102, 217, 255, 0.16),
+    0 0 20px rgba(102, 217, 255, 0.14);
+}
+
 .rating-block {
   display: grid;
   gap: 10px;
@@ -1383,6 +1398,10 @@ h1 {
 .modal.is-open {
   display: flex;
   opacity: 1;
+}
+
+.modal.is-open .modal__panel {
+  isolation: isolate;
 }
 
 .modal__backdrop {
