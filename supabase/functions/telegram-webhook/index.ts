@@ -44,6 +44,18 @@ function requestMenu() {
   };
 }
 
+function requestActions(requestId: string) {
+  return {
+    inline_keyboard: [
+      [
+        { text: "✅ Взять в работу", callback_data: `request:${requestId}:answered` },
+        { text: "🚫 Отклонить", callback_data: `request:${requestId}:rejected` },
+      ],
+      [{ text: "📋 К списку заявок", callback_data: "list:all" }],
+    ],
+  };
+}
+
 async function sendRequestList(
   supabase: any,
   botToken: string,
@@ -90,11 +102,64 @@ async function sendRequestList(
     ? `${heading}\n\n${rows.join("\n\n────────────\n\n")}`
     : `${heading}\n\nПока здесь нет заявок.`;
 
+  const detailButtons = requests.map((item, index) => [
+    {
+      text: `👁 Подробнее: ${index + 1}. ${item.name.slice(0, 28)}`,
+      callback_data: `view:${item.id}`,
+    },
+  ]);
+
   await telegramRequest(botToken, "sendMessage", {
     chat_id: chatId,
     text: message,
     parse_mode: "HTML",
-    reply_markup: requestMenu(),
+    reply_markup: {
+      inline_keyboard: [...detailButtons, ...requestMenu().inline_keyboard],
+    },
+  });
+}
+
+async function sendRequestDetails(
+  supabase: any,
+  botToken: string,
+  chatId: number,
+  requestId: string
+) {
+  const { data, error } = await supabase
+    .from("project_requests")
+    .select("id, name, text, status, admin_reply, created_at, updated_at")
+    .eq("id", requestId)
+    .single();
+
+  if (error || !data) throw error || new Error("Request not found");
+
+  const createdAt = new Intl.DateTimeFormat("ru-RU", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Yekaterinburg",
+  }).format(new Date(data.created_at));
+  const updatedAt = new Intl.DateTimeFormat("ru-RU", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Yekaterinburg",
+  }).format(new Date(data.updated_at || data.created_at));
+  const message = [
+    "<b>👁 Просмотр заявки</b>",
+    "",
+    `<b>👤 Клиент:</b> ${escapeHtml(data.name)}`,
+    `<b>💬 Сообщение:</b>\n${escapeHtml(data.text)}`,
+    `<b>🏷 Статус:</b> ${statusLabel(data.status)}`,
+    `<b>🕒 Получена:</b> ${createdAt}`,
+    `<b>🔄 Обновлена:</b> ${updatedAt}`,
+  ];
+
+  if (data.admin_reply) message.push(`<b>📝 Отметка:</b> ${escapeHtml(data.admin_reply)}`);
+
+  await telegramRequest(botToken, "sendMessage", {
+    chat_id: chatId,
+    text: message.join("\n"),
+    parse_mode: "HTML",
+    reply_markup: requestActions(data.id),
   });
 }
 
@@ -139,6 +204,16 @@ Deno.serve(async (request) => {
       await telegramRequest(botToken, "answerCallbackQuery", {
         callback_query_id: callback.id,
         text: "Список заявок обновлён",
+      });
+      return new Response("ok", { status: 200 });
+    }
+
+    const viewMatch = String(callback?.data || "").match(/^view:([0-9a-f-]{36})$/i);
+    if (callback && viewMatch) {
+      await sendRequestDetails(supabase, botToken, callback.message.chat.id, viewMatch[1]);
+      await telegramRequest(botToken, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: "Заявка открыта",
       });
       return new Response("ok", { status: 200 });
     }
