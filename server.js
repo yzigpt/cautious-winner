@@ -445,6 +445,14 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, "portfolio.html");
   }
 
+  if (req.method === "GET" && (url.pathname === "/users" || url.pathname === "/users.html")) {
+    return serveFile(res, "users.html");
+  }
+
+  if (req.method === "GET" && (url.pathname === "/set-password" || url.pathname === "/set-password.html")) {
+    return serveFile(res, "set-password.html");
+  }
+
   if (req.method === "POST" && url.pathname === "/api/auth/send-code") {
     return readJson(req, res, async (body) => {
       const name = String(body.name || "").trim();
@@ -905,6 +913,12 @@ const server = http.createServer(async (req, res) => {
     "/site-api.js": "site-api.js",
     "/scene.js": "scene.js",
     "/assets/developer-studio-hero.png": "assets/developer-studio-hero.png",
+    "/auth.js": "auth.js",
+    "/supabase-client.js": "supabase-client.js",
+    "/supabase-config.js": "supabase-config.js",
+    "/profile.js": "profile.js",
+    "/users.js": "users.js",
+    "/set-password.js": "set-password.js",
   };
 
   if (staticCandidates[url.pathname]) {

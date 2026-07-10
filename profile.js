@@ -1,4 +1,4 @@
-import { getCurrentSession, signIn, signOut, signUp } from "./auth.js";
+import { checkAccountAccess, getCurrentSession, signIn, signOut, signUp } from "./auth.js";
 import { getSupabase } from "./supabase-client.js?v=20260710-account";
 import { escapeHtml } from "./storage.js";
 
@@ -45,7 +45,15 @@ async function showProfile(session) {
 
 async function refreshView() {
   const session = await getCurrentSession();
-  if (session) return showProfile(session);
+  if (session) {
+    try {
+      await checkAccountAccess();
+      return showProfile(session);
+    } catch (error) {
+      await signOut();
+      authStatus.textContent = error.message || "Account access is restricted.";
+    }
+  }
   realtimeChannel?.unsubscribe();
   authPanel.hidden = false;
   profilePanel.hidden = true;
@@ -63,7 +71,8 @@ document.getElementById("login-form").addEventListener("submit", async (event) =
 document.getElementById("signup-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
-    const data = await signUp({ name: document.getElementById("signup-name").value.trim(), email: document.getElementById("signup-email").value.trim(), password: document.getElementById("signup-password").value });
+    const data = await signUp({ name: document.getElementById("signup-name").value.trim(), email: document.getElementById("signup-email").value.trim() });
+    authStatus.textContent = data.message || "Check your email to set a password and confirm the account.";
     authStatus.textContent = data.session ? "Аккаунт создан." : "Проверьте email и подтвердите регистрацию, затем войдите.";
     await refreshView();
   } catch (error) { authStatus.textContent = error.message || "Не удалось создать аккаунт."; }
@@ -76,3 +85,5 @@ document.getElementById("logout-button").addEventListener("click", async () => {
 });
 
 await refreshView();
+
+document.getElementById("signup-password")?.closest("label")?.setAttribute("hidden", "");

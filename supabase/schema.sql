@@ -80,6 +80,24 @@ create table if not exists public.request_rate_limits (
   request_count integer not null default 0
 );
 
+create table if not exists public.account_access_controls (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  account_status text not null default 'active' check (account_status in ('active', 'frozen', 'blocked')),
+  ip_hash text,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  last_seen_at timestamptz,
+  note text
+);
+
+create table if not exists public.ip_access_controls (
+  ip_hash text primary key,
+  access_status text not null check (access_status in ('frozen', 'blocked')),
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  note text
+);
+
 create or replace function public.check_request_rate_limit(p_key text)
 returns boolean
 language plpgsql
@@ -174,11 +192,25 @@ before update on public.telegram_admin_chats
 for each row
 execute function public.touch_updated_at();
 
+drop trigger if exists account_access_controls_touch_updated_at on public.account_access_controls;
+create trigger account_access_controls_touch_updated_at
+before update on public.account_access_controls
+for each row
+execute function public.touch_updated_at();
+
+drop trigger if exists ip_access_controls_touch_updated_at on public.ip_access_controls;
+create trigger ip_access_controls_touch_updated_at
+before update on public.ip_access_controls
+for each row
+execute function public.touch_updated_at();
+
 alter table public.reviews enable row level security;
 alter table public.project_requests enable row level security;
 alter table public.telegram_admin_chats enable row level security;
 alter table public.site_settings enable row level security;
 alter table public.request_rate_limits enable row level security;
+alter table public.account_access_controls enable row level security;
+alter table public.ip_access_controls enable row level security;
 
 drop policy if exists "public can read reviews" on public.reviews;
 create policy "public can read reviews"
@@ -191,6 +223,8 @@ grant usage on schema public to anon, authenticated;
 grant select on public.reviews to anon, authenticated;
 revoke insert on public.reviews from anon, authenticated;
 revoke insert on public.project_requests from anon, authenticated;
+revoke all on public.account_access_controls from anon, authenticated;
+revoke all on public.ip_access_controls from anon, authenticated;
 revoke all on function public.check_request_rate_limit(text) from public, anon, authenticated;
 grant execute on function public.check_request_rate_limit(text) to service_role;
 revoke all on function public.delete_project_request_and_renumber(uuid) from public, anon, authenticated;

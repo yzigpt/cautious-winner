@@ -3964,3 +3964,46 @@ body::before {
   .project-card__visual img,
   .bot-orbit { transition: none; animation: none; }
 }
+
+/* Account access administration. */
+.access-page,
+.users-page { gap: 30px; }
+
+.access-card,
+.users-hero,
+.users-card { padding: clamp(28px, 5vw, 60px); }
+
+.access-card { width: min(680px, 100%); justify-self: center; }
+.access-card h1,
+.users-hero h1 { max-width: 16ch; }
+.access-card .auth-form { margin-top: 28px; }
+
+.users-card { display: grid; gap: 22px; }
+.users-card__head { display: flex; justify-content: space-between; gap: 20px; align-items: start; }
+.users-card__head h2 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.5rem); }
+.users-card__head .section-copy { max-width: 66ch; margin: 10px 0 0; }
+
+.users-list { display: grid; gap: 14px; }
+.user-row { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.72fr) minmax(260px, 1.1fr); gap: 18px; align-items: center; padding: 20px; border: 1px solid rgba(169, 232, 255, 0.13); border-radius: 22px; background: rgba(6, 18, 33, 0.56); }
+.user-row__identity,
+.user-row__state { display: grid; gap: 7px; }
+.user-row__identity span,
+.user-row small { color: var(--muted); font-size: 0.86rem; overflow-wrap: anywhere; }
+.user-row__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.user-row__actions button { padding: 8px 10px; border: 1px solid rgba(169, 232, 255, 0.16); border-radius: 10px; color: var(--text); background: rgba(102, 217, 255, 0.07); font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+.user-row__actions button:hover:not(:disabled) { background: rgba(102, 217, 255, 0.15); border-color: rgba(102, 217, 255, 0.35); }
+.user-row__actions button:disabled { opacity: 0.45; cursor: not-allowed; }
+.access-pill { width: fit-content; padding: 6px 9px; border: 1px solid rgba(169, 232, 255, 0.15); border-radius: 999px; background: rgba(102, 217, 255, 0.08); font-size: 0.78rem; font-weight: 800; }
+.access-pill--frozen { border-color: rgba(246, 211, 122, 0.32); background: rgba(246, 211, 122, 0.12); color: #ffe6a9; }
+.access-pill--blocked { border-color: rgba(255, 99, 132, 0.34); background: rgba(255, 99, 132, 0.12); color: #ffbbc9; }
+
+@media (max-width: 860px) {
+  .user-row { grid-template-columns: 1fr; }
+  .user-row__actions { justify-content: flex-start; }
+}
+
+@media (max-width: 640px) {
+  .users-card__head { flex-direction: column; }
+  .users-card__head .auth-btn { width: 100%; }
+  .user-row { padding: 16px; }
+}

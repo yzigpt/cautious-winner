@@ -22,9 +22,22 @@ function clean(value: unknown, maxLength: number) {
 }
 
 async function hashValue(value: string) {
-  const data = new TextEncoder().encode(value);
+  const salt = Deno.env.get("IP_ACCESS_SALT");
+  if (!salt) throw new Error("IP access protection is not configured");
+  const data = new TextEncoder().encode(`${salt}:${value}`);
   const hash = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function hasRestrictedAccess(supabase: any, userId: string | null, ipHash: string) {
+  const [{ data: ipControl, error: ipError }, { data: accountControl, error: accountError }] = await Promise.all([
+    supabase.from("ip_access_controls").select("access_status").eq("ip_hash", ipHash).maybeSingle(),
+    userId
+      ? supabase.from("account_access_controls").select("account_status").eq("user_id", userId).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+  if (ipError || accountError) throw ipError || accountError;
+  return Boolean(ipControl) || Boolean(accountControl && accountControl.account_status !== "active");
 }
 
 Deno.serve(async (request) => {
@@ -78,8 +91,12 @@ Deno.serve(async (request) => {
     }
     const forwardedFor = request.headers.get("x-forwarded-for") || "unknown";
     const clientIp = forwardedFor.split(",")[0].trim();
+    const ipHash = await hashValue(clientIp);
+    if (await hasRestrictedAccess(supabase, userId, ipHash)) {
+      return json({ ok: false, error: "Access from this account or network is restricted" }, 403);
+    }
     const { data: isAllowed, error: rateLimitError } = await supabase.rpc("check_request_rate_limit", {
-      p_key: `request:${await hashValue(clientIp)}`,
+      p_key: `request:${ipHash}`,
     });
     if (rateLimitError) throw rateLimitError;
     if (!isAllowed) return json({ ok: false, error: "Too many requests" }, 429);
