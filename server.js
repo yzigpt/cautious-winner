@@ -422,6 +422,11 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 200, { ok: true });
   }
 
+  // The administrator cabinet has been removed from the product.
+  if (url.pathname.startsWith("/api/admin") || url.pathname.startsWith("/api/auth")) {
+    return sendJson(res, 404, { error: "Not found" });
+  }
+
   if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
     return serveFile(res, "index.html");
   }
@@ -432,14 +437,6 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "GET" && (url.pathname === "/requests" || url.pathname === "/requests.html")) {
     return serveFile(res, "requests.html");
-  }
-
-  if (req.method === "GET" && (url.pathname === "/cabinet" || url.pathname === "/cabinet.html")) {
-    return serveFile(res, "cabinet.html");
-  }
-
-  if (req.method === "GET" && (url.pathname === "/edit" || url.pathname === "/edit.html")) {
-    return serveFile(res, "edit.html");
   }
 
   if (req.method === "POST" && url.pathname === "/api/auth/send-code") {
@@ -897,12 +894,9 @@ const server = http.createServer(async (req, res) => {
     "/home-leads.js": "home-leads.js",
     "/reviews.js": "reviews.js",
     "/requests.js": "requests.js",
-    "/cabinet.js": "cabinet.js",
-    "/edit.js": "edit.js",
     "/storage.js": "storage.js",
     "/api.js": "api.js",
     "/site-api.js": "site-api.js",
-    "/admin-api.js": "admin-api.js",
   };
 
   if (staticCandidates[url.pathname]) {

@@ -1,14 +1,7 @@
 -- Run this entire file in Supabase: SQL Editor -> New query -> Run.
--- It creates the permanent cloud database for public reviews, buyer requests,
--- and the administrator cabinet.
+-- It creates the permanent cloud database for public reviews and buyer requests.
 
 create extension if not exists pgcrypto;
-
-create table if not exists public.admin_profiles (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  display_name text not null default 'Admin',
-  created_at timestamptz not null default timezone('utc', now())
-);
 
 create table if not exists public.reviews (
   id uuid primary key default gen_random_uuid(),
@@ -37,20 +30,6 @@ create table if not exists public.telegram_admin_chats (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
-create or replace function public.is_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1
-    from public.admin_profiles
-    where user_id = auth.uid()
-  );
-$$;
-
 create or replace function public.touch_updated_at()
 returns trigger
 language plpgsql
@@ -73,17 +52,9 @@ before update on public.telegram_admin_chats
 for each row
 execute function public.touch_updated_at();
 
-alter table public.admin_profiles enable row level security;
 alter table public.reviews enable row level security;
 alter table public.project_requests enable row level security;
 alter table public.telegram_admin_chats enable row level security;
-
-drop policy if exists "admin profiles select own row" on public.admin_profiles;
-create policy "admin profiles select own row"
-on public.admin_profiles
-for select
-to authenticated
-using (user_id = auth.uid());
 
 drop policy if exists "public can read reviews" on public.reviews;
 create policy "public can read reviews"
@@ -99,21 +70,6 @@ for insert
 to anon, authenticated
 with check (true);
 
-drop policy if exists "admins can update reviews" on public.reviews;
-create policy "admins can update reviews"
-on public.reviews
-for update
-to authenticated
-using (public.is_admin())
-with check (public.is_admin());
-
-drop policy if exists "admins can delete reviews" on public.reviews;
-create policy "admins can delete reviews"
-on public.reviews
-for delete
-to authenticated
-using (public.is_admin());
-
 drop policy if exists "public can create project requests" on public.project_requests;
 create policy "public can create project requests"
 on public.project_requests
@@ -121,23 +77,6 @@ for insert
 to anon, authenticated
 with check (true);
 
-drop policy if exists "admins can read project requests" on public.project_requests;
-create policy "admins can read project requests"
-on public.project_requests
-for select
-to authenticated
-using (public.is_admin());
-
-drop policy if exists "admins can update project requests" on public.project_requests;
-create policy "admins can update project requests"
-on public.project_requests
-for update
-to authenticated
-using (public.is_admin())
-with check (public.is_admin());
-
 grant usage on schema public to anon, authenticated;
 grant select, insert on public.reviews to anon, authenticated;
 grant insert on public.project_requests to anon, authenticated;
-grant select, update, delete on public.reviews to authenticated;
-grant select, update on public.project_requests to authenticated;

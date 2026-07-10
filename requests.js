@@ -26,7 +26,7 @@ if (contactForm) {
     try {
       await sendMessage({ name, text });
       contactForm.reset();
-      setStatus("✅ Заявка отправлена. Она уже появилась в кабинете.");
+      setStatus("✅ Заявка отправлена. Скоро с вами свяжутся.");
     } catch (error) {
       setStatus(error.message || "Не удалось отправить заявку.");
     }

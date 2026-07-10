@@ -34,13 +34,8 @@ The app is configured to store data in:
 6. Confirm deploy.
 7. After deploy finishes, open the generated `https://...onrender.com` URL.
 
-## Admin login
-
-- URL: `/cabinet.html`
-- Password: `fandomyzi20112011`
-
 ## Notes
 
 - The persistent disk is mounted at `/data`.
-- The public site and admin cabinet run in the same Node service.
+- The public site runs in the Node service.
 - If you later buy a custom domain, you can attach it in Render.

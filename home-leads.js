@@ -23,12 +23,12 @@ if (form) {
       return;
     }
 
-    setStatus("Отправляем заявку в кабинет...");
+    setStatus("Отправляем заявку...");
 
     try {
       await sendMessage({ name, phone, text });
       form.reset();
-      setStatus("✅ Заявка отправлена. Она уже появилась в кабинете.");
+      setStatus("✅ Заявка отправлена. Скоро с вами свяжутся.");
     } catch (error) {
       setStatus(error.message || "Не удалось отправить заявку.");
     }

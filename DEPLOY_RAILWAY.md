@@ -28,8 +28,3 @@ The app now supports:
 5. After the project is created, add a `Volume` and mount it to `/data`.
 6. In service settings, confirm the start command is `npm start`.
 7. Generate a public domain in the Networking tab.
-
-## Admin login
-
-- URL: `/cabinet.html`
-- Password: `fandomyzi20112011`

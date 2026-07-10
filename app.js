@@ -131,7 +131,7 @@ contactForm.addEventListener("submit", async (event) => {
   try {
     await sendMessage({ name, phone, text });
     contactForm.reset();
-    setStatus(contactStatus, "✅ Заявка отправлена. Ответ увидите в кабинете.");
+    setStatus(contactStatus, "✅ Заявка отправлена. Скоро с вами свяжутся.");
   } catch (error) {
     setStatus(contactStatus, error.message || "Не удалось отправить заявку.");
   }

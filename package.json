@@ -2,11 +2,11 @@
   "name": "frog-oxide-studio-site",
   "version": "1.0.0",
   "private": true,
-  "description": "Landing site and admin cabinet for Frog Oxide Studio",
+  "description": "Landing site for Frog Oxide Studio",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check cabinet.js && node --check requests.js && node --check reviews.js"
+    "check": "node --check server.js && node --check requests.js && node --check reviews.js"
   },
   "engines": {
     "node": ">=22"

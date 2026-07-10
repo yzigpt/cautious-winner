@@ -7,7 +7,6 @@ This project can run for free as a static site on GitHub Pages or Cloudflare Pag
 - The public site can work without `server.js`
 - Reviews are stored in Supabase
 - Buyer requests are stored in Supabase
-- The admin cabinet uses Supabase Auth
 
 ## 1. Create the permanent database
 
@@ -20,7 +19,6 @@ After a successful run, open `Table Editor`. You must see exactly these tables:
 
 - `reviews` - public client reviews
 - `project_requests` - requests sent from the website
-- `admin_profiles` - access list for the administrator cabinet
 
 The website already sends reviews and requests to these tables. No phone number is saved with a request.
 
@@ -59,11 +57,6 @@ You can publish the site for free in two easy ways:
 - Cloudflare Pages
 
 The frontend is fully static, so both options work.
-
-## Admin cabinet
-
-- URL: `/cabinet.html`
-- Login: email from `SUPABASE_ADMIN_EMAIL` + your Supabase password
 
 ## Notes
 
