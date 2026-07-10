@@ -22,6 +22,14 @@ if (!canvas && page) {
   page.prepend(ambient, canvas);
 }
 
+const ambientLayer = document.querySelector(".ambient-3d");
+if (ambientLayer && !ambientLayer.querySelector(".ambient-3d__cube")) {
+  ambientLayer.insertAdjacentHTML(
+    "beforeend",
+    '<span class="ambient-3d__cube ambient-3d__cube--one"></span><span class="ambient-3d__cube ambient-3d__cube--two"></span>',
+  );
+}
+
 if (canvas && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
   const context = canvas.getContext("2d");
   const isCompact = window.matchMedia("(max-width: 640px)").matches;
