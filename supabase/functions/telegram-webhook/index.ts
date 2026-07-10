@@ -323,7 +323,8 @@ Deno.serve(async (request) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const message = update.message;
-    if (message?.chat && (String(message.text || "").startsWith("/start") || ["/requests", "/заявки"].includes(String(message.text || "").toLowerCase()))) {
+    const command = String(message?.text || "").trim().toLowerCase().split(/\s+/)[0].split("@")[0];
+    if (message?.chat && ["/start", "/requests", "/заявки", "/reviews", "/отзывы", "/site", "/сайт", "/help"].includes(command)) {
       const chat = message.chat;
       const isKnownChat = await isConnectedAdmin(supabase, chat.id);
       const { count, error: chatCountError } = await supabase
@@ -347,9 +348,24 @@ Deno.serve(async (request) => {
         });
       }
 
+      if (["/requests", "/заявки"].includes(command)) {
+        await sendRequestList(supabase, botToken, chat.id, "all");
+        return new Response("ok", { status: 200 });
+      }
+
+      if (["/reviews", "/отзывы"].includes(command)) {
+        await sendReviewList(supabase, botToken, chat.id);
+        return new Response("ok", { status: 200 });
+      }
+
+      if (["/site", "/сайт"].includes(command)) {
+        await sendSiteManagementPanel(supabase, botToken, chat.id);
+        return new Response("ok", { status: 200 });
+      }
+
       await telegramRequest(botToken, "sendMessage", {
         chat_id: chat.id,
-        text: "<b>✨ Frog Oxide: бот подключён</b>\n\nНовые заявки с сайта будут приходить сюда сразу после отправки.\n\nВыберите, какие заявки посмотреть, или нажмите кнопку в уведомлении, чтобы изменить её статус.",
+        text: "<b>✨ Frog Oxide Control Center</b>\n\nВаш аккуратный центр управления сайтом. Новые заявки приходят сюда мгновенно, а статусы синхронизируются с личными кабинетами клиентов.\n\n<b>Быстрые команды:</b>\n/requests - заявки\n/reviews - отзывы\n/site - управление сайтом",
         parse_mode: "HTML",
         reply_markup: requestMenu(),
       });
