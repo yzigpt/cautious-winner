@@ -3665,7 +3665,7 @@ body::before {
 
 .portfolio-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 30px;
   align-items: end;
   padding: clamp(32px, 5vw, 68px);
