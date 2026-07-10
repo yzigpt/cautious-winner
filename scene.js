@@ -12,6 +12,8 @@ if (!canvas && page) {
     <span class="ambient-3d__orb ambient-3d__orb--gold"></span>
     <span class="ambient-3d__plane ambient-3d__plane--one"></span>
     <span class="ambient-3d__plane ambient-3d__plane--two"></span>
+    <span class="ambient-3d__ring ambient-3d__ring--one"></span>
+    <span class="ambient-3d__ring ambient-3d__ring--two"></span>
   `;
 
   canvas = document.createElement("canvas");
