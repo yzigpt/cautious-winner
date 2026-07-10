@@ -43,8 +43,44 @@ function requestMenu() {
       ],
       [{ text: "🚫 Отклонённые", callback_data: "list:rejected:0" }],
       [{ text: "⭐ Управление отзывами", callback_data: "reviews:list" }],
+      [{ text: "🌐 Управление сайтом", callback_data: "site:menu" }],
     ],
   };
+}
+
+function siteManagementMenu(requestsEnabled: boolean) {
+  return {
+    inline_keyboard: [
+      [{ text: requestsEnabled ? "⏸ Остановить приём заявок" : "▶️ Включить приём заявок", callback_data: "site:toggle-requests" }],
+      [{ text: "🔄 Обновить панель", callback_data: "site:menu" }],
+      [{ text: "🔗 Открыть сайт", url: "https://yzigpt.github.io/cautious-winner/" }],
+      [{ text: "📋 К заявкам", callback_data: "list:all:0" }],
+    ],
+  };
+}
+
+async function sendSiteManagementPanel(supabase: any, botToken: string, chatId: number) {
+  const [{ data: settings, error: settingsError }, { count: totalRequests, error: requestsError }, { count: totalReviews, error: reviewsError }] = await Promise.all([
+    supabase.from("site_settings").select("requests_enabled").eq("id", 1).maybeSingle(),
+    supabase.from("project_requests").select("*", { count: "exact", head: true }),
+    supabase.from("reviews").select("*", { count: "exact", head: true }),
+  ]);
+  if (settingsError || requestsError || reviewsError) throw settingsError || requestsError || reviewsError;
+  const requestsEnabled = settings?.requests_enabled !== false;
+  await telegramRequest(botToken, "sendMessage", {
+    chat_id: chatId,
+    text: [
+      "<b>🌐 Управление сайтом</b>",
+      "",
+      `<b>Приём заявок:</b> ${requestsEnabled ? "✅ включён" : "⏸ временно выключен"}`,
+      `<b>Всего заявок:</b> ${totalRequests || 0}`,
+      `<b>Отзывов на сайте:</b> ${totalReviews || 0}`,
+      "",
+      "Используйте кнопку ниже, чтобы временно закрыть или открыть форму заявок.",
+    ].join("\n"),
+    parse_mode: "HTML",
+    reply_markup: siteManagementMenu(requestsEnabled),
+  });
 }
 
 function reviewMenu() {
@@ -347,6 +383,35 @@ Deno.serve(async (request) => {
         callback_query_id: callback.id,
         text: "Отзывы загружены",
       });
+      return new Response("ok", { status: 200 });
+    }
+
+    if (callback && String(callback.data || "") === "site:menu") {
+      await sendSiteManagementPanel(supabase, botToken, callback.message.chat.id);
+      await telegramRequest(botToken, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: "Панель сайта обновлена",
+      });
+      return new Response("ok", { status: 200 });
+    }
+
+    if (callback && String(callback.data || "") === "site:toggle-requests") {
+      const { data: current, error: currentError } = await supabase
+        .from("site_settings")
+        .select("requests_enabled")
+        .eq("id", 1)
+        .maybeSingle();
+      if (currentError) throw currentError;
+      const requestsEnabled = !(current?.requests_enabled !== false);
+      const { error: updateError } = await supabase
+        .from("site_settings")
+        .upsert({ id: 1, requests_enabled: requestsEnabled, updated_at: new Date().toISOString() });
+      if (updateError) throw updateError;
+      await telegramRequest(botToken, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: requestsEnabled ? "Приём заявок включён" : "Приём заявок остановлен",
+      });
+      await sendSiteManagementPanel(supabase, botToken, callback.message.chat.id);
       return new Response("ok", { status: 200 });
     }
 

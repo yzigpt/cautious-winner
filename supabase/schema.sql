@@ -63,6 +63,15 @@ create table if not exists public.telegram_admin_chats (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.site_settings (
+  id smallint primary key default 1 check (id = 1),
+  requests_enabled boolean not null default true,
+  updated_at timestamptz not null default timezone('utc', now())
+);
+insert into public.site_settings (id, requests_enabled)
+values (1, true)
+on conflict (id) do nothing;
+
 create table if not exists public.request_rate_limits (
   rate_key text primary key,
   window_started_at timestamptz not null default timezone('utc', now()),
@@ -123,6 +132,7 @@ execute function public.touch_updated_at();
 alter table public.reviews enable row level security;
 alter table public.project_requests enable row level security;
 alter table public.telegram_admin_chats enable row level security;
+alter table public.site_settings enable row level security;
 alter table public.request_rate_limits enable row level security;
 
 drop policy if exists "public can read reviews" on public.reviews;

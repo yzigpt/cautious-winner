@@ -57,6 +57,15 @@ Deno.serve(async (request) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const { data: siteSettings, error: siteSettingsError } = await supabase
+      .from("site_settings")
+      .select("requests_enabled")
+      .eq("id", 1)
+      .maybeSingle();
+    if (siteSettingsError) throw siteSettingsError;
+    if (siteSettings && !siteSettings.requests_enabled) {
+      return json({ ok: false, error: "Requests are temporarily disabled" }, 503);
+    }
     const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
     let userId = null;
     if (accessToken?.startsWith("eyJ")) {
