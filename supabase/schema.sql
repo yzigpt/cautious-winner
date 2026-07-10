@@ -117,6 +117,49 @@ begin
 end;
 $$;
 
+create or replace function public.delete_project_request_and_renumber(p_request_id uuid)
+returns table (deleted_request_number bigint)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  deleted_number bigint;
+begin
+  -- Keep deletion, renumbering, and the sequence reset as one atomic operation.
+  lock table public.project_requests in access exclusive mode;
+
+  delete from public.project_requests
+  where id = p_request_id
+  returning request_number into deleted_number;
+
+  if deleted_number is null then
+    return;
+  end if;
+
+  with numbered_requests as (
+    select id, row_number() over (order by created_at asc, id asc) as new_number
+    from public.project_requests
+  )
+  update public.project_requests
+  set request_number = -numbered_requests.new_number
+  from numbered_requests
+  where public.project_requests.id = numbered_requests.id;
+
+  update public.project_requests
+  set request_number = -request_number
+  where request_number < 0;
+
+  perform setval(
+    'public.project_request_number_seq',
+    coalesce((select max(request_number) from public.project_requests), 0) + 1,
+    false
+  );
+
+  return query select deleted_number;
+end;
+$$;
+
 drop trigger if exists project_requests_touch_updated_at on public.project_requests;
 create trigger project_requests_touch_updated_at
 before update on public.project_requests
@@ -148,6 +191,8 @@ revoke insert on public.reviews from anon, authenticated;
 revoke insert on public.project_requests from anon, authenticated;
 revoke all on function public.check_request_rate_limit(text) from public, anon, authenticated;
 grant execute on function public.check_request_rate_limit(text) to service_role;
+revoke all on function public.delete_project_request_and_renumber(uuid) from public, anon, authenticated;
+grant execute on function public.delete_project_request_and_renumber(uuid) to service_role;
 
 drop policy if exists "users can read own project requests" on public.project_requests;
 create policy "users can read own project requests"

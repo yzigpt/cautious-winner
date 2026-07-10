@@ -499,13 +499,13 @@ Deno.serve(async (request) => {
 
     const deleteConfirmMatch = String(callback?.data || "").match(/^delete-confirm:([0-9a-f-]{36})$/i);
     if (callback && deleteConfirmMatch) {
-      const { data, error } = await supabase
-        .from("project_requests")
-        .delete()
-        .eq("id", deleteConfirmMatch[1])
-        .select("request_number")
-        .maybeSingle();
-      if (error || !data) throw error || new Error("Request not found");
+      const { data: result, error } = await supabase.rpc(
+        "delete_project_request_and_renumber",
+        { p_request_id: deleteConfirmMatch[1] }
+      );
+      const deletedRequest = Array.isArray(result) ? result[0] : result;
+      const data = { request_number: deletedRequest?.deleted_request_number };
+      if (error || !data.request_number) throw error || new Error("Request not found");
 
       await telegramRequest(botToken, "answerCallbackQuery", {
         callback_query_id: callback.id,
