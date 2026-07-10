@@ -2410,7 +2410,7 @@ body::before {
   background:
     radial-gradient(circle at 34% 30%, rgba(235, 252, 255, 0.92), rgba(102, 217, 255, 0.42) 22%, rgba(102, 217, 255, 0.06) 56%, transparent 70%);
   box-shadow: 0 0 140px rgba(102, 217, 255, 0.2);
-  animation: orbitCyan 16s ease-in-out infinite alternate;
+  animation: orbitCyan 24s ease-in-out infinite alternate;
 }
 
 .ambient-3d__orb--gold {
@@ -2421,7 +2421,7 @@ body::before {
   background:
     radial-gradient(circle at 36% 35%, rgba(255, 243, 210, 0.86), rgba(246, 211, 122, 0.32) 25%, rgba(246, 211, 122, 0.04) 62%, transparent 72%);
   box-shadow: 0 0 120px rgba(246, 211, 122, 0.14);
-  animation: orbitGold 20s ease-in-out infinite alternate;
+  animation: orbitGold 30s ease-in-out infinite alternate;
 }
 
 .ambient-3d__plane {
@@ -2437,7 +2437,7 @@ body::before {
   top: 9%;
   right: -18vw;
   transform: rotateX(62deg) rotateZ(-24deg) translateZ(-120px);
-  animation: planeFloatOne 18s ease-in-out infinite alternate;
+  animation: planeFloatOne 26s ease-in-out infinite alternate;
 }
 
 .ambient-3d__plane--two {
@@ -2446,7 +2446,7 @@ body::before {
   border-color: rgba(246, 211, 122, 0.12);
   background: linear-gradient(135deg, rgba(246, 211, 122, 0.06), rgba(102, 217, 255, 0.01));
   transform: rotateX(68deg) rotateZ(34deg) translateZ(-180px);
-  animation: planeFloatTwo 21s ease-in-out infinite alternate;
+  animation: planeFloatTwo 33s ease-in-out infinite alternate;
 }
 
 @keyframes orbitCyan {

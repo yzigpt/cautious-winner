@@ -5,7 +5,7 @@ if (canvas && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
   const isCompact = window.matchMedia("(max-width: 640px)").matches;
   const particles = [];
   const pointer = { x: 0, y: 0 };
-  const count = isCompact ? 28 : 62;
+  const count = isCompact ? 38 : 82;
   let width = 0;
   let height = 0;
   let pixelRatio = 1;
@@ -18,7 +18,7 @@ if (canvas && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         x: Math.random() * 2 - 1,
         y: Math.random() * 2 - 1,
         z: Math.random() * 1.8 + 0.15,
-        speed: 0.00015 + Math.random() * 0.00035,
+        speed: 0.0001 + Math.random() * 0.00022,
         phase: Math.random() * Math.PI * 2,
       });
     }
