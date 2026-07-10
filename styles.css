@@ -3509,3 +3509,151 @@ body::before {
   .signal-node:not(:last-child)::before { top: auto; right: auto; bottom: -22px; left: calc(50% - 3px); transform: rotate(135deg); }
   .signal-console__footer { font-size: 0.6rem; }
 }
+
+/* Vector workflow diagram: real nodes, routes, and data transfer states. */
+.signal-console__map {
+  display: block;
+  min-height: 0;
+  padding: 12px 18px;
+  overflow: hidden;
+}
+
+.signal-console__map::before {
+  display: none;
+}
+
+.workflow-diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  font-family: "Manrope", sans-serif;
+}
+
+.workflow-diagram__grid path {
+  stroke: rgba(166, 231, 255, 0.07);
+  stroke-width: 1;
+}
+
+.workflow-diagram__path {
+  fill: none;
+  stroke: url(#workflow-line);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 7 8;
+  filter: url(#workflow-glow);
+  animation: workflowFlow 4.8s linear infinite;
+}
+
+.workflow-diagram__path--second {
+  animation-delay: -2.4s;
+}
+
+.workflow-diagram__pulse {
+  fill: #c5f6ff;
+  filter: url(#workflow-glow);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: workflowPulse 2.4s ease-in-out infinite;
+}
+
+.workflow-diagram__pulse--second {
+  animation-delay: -1.2s;
+}
+
+.workflow-diagram__route-label {
+  fill: rgba(190, 239, 255, 0.65);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.workflow-diagram__node {
+  cursor: default;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.3s ease;
+}
+
+.workflow-diagram__node > rect:first-child {
+  fill: url(#workflow-node);
+  stroke: rgba(178, 240, 255, 0.27);
+  stroke-width: 1;
+  filter: drop-shadow(0 16px 18px rgba(0, 0, 0, 0.22));
+  transition: fill 0.3s ease, stroke 0.3s ease;
+}
+
+.workflow-diagram__node:hover {
+  transform: translateY(-6px);
+}
+
+.workflow-diagram__node:hover > rect:first-child {
+  fill: rgba(18, 62, 91, 0.96);
+  stroke: rgba(142, 235, 255, 0.7);
+}
+
+.workflow-diagram__index {
+  fill: rgba(102, 217, 255, 0.12);
+  stroke: rgba(151, 235, 255, 0.3);
+  stroke-width: 1;
+}
+
+.workflow-diagram__index-text {
+  fill: #a6efff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-anchor: middle;
+}
+
+.workflow-diagram__title {
+  fill: #f4f7fb;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.workflow-diagram__copy {
+  fill: rgba(214, 239, 249, 0.68);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@keyframes workflowFlow {
+  to { stroke-dashoffset: -45; }
+}
+
+@keyframes workflowPulse {
+  0%, 100% { transform: scale(0.78); opacity: 0.45; }
+  50% { transform: scale(1.32); opacity: 1; }
+}
+
+@media (max-width: 640px) {
+  .signal-console__map {
+    padding: 8px 0 14px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .signal-console__map::-webkit-scrollbar {
+    display: none;
+  }
+
+  .workflow-diagram {
+    min-width: 620px;
+    padding: 0 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow-diagram__path,
+  .workflow-diagram__pulse {
+    animation: none;
+  }
+
+  .workflow-diagram__node {
+    transition: none;
+  }
+}
