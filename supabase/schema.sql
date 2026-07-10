@@ -88,7 +88,7 @@ begin
         then 1
       else public.request_rate_limits.request_count + 1
     end
-  returning request_count <= 5 into is_allowed;
+  returning request_count <= 1 into is_allowed;
 
   return is_allowed;
 end;
