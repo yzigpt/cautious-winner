@@ -288,11 +288,12 @@ Deno.serve(async (request) => {
 
       await telegramRequest(botToken, "answerCallbackQuery", {
         callback_query_id: callback.id,
-        text: `Заявка №${data.request_number} удалена`,
+        text: `Успешно удалено: заявка №${data.request_number}`,
       });
       await telegramRequest(botToken, "sendMessage", {
         chat_id: callback.message.chat.id,
-        text: `🗑 Заявка №${data.request_number} удалена из базы.`,
+        text: `✅ <b>Успешно удалено</b>\n\nЗаявка №${data.request_number} удалена из базы.`,
+        parse_mode: "HTML",
       });
       return new Response("ok", { status: 200 });
     }
