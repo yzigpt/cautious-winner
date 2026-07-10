@@ -3,7 +3,6 @@ import { getPublicReviews, createReview } from "./site-api.js?v=20260710-account
 import { getCurrentSession } from "./auth.js";
 
 const reviewForm = document.getElementById("review-form");
-const reviewNameInput = document.getElementById("review-name");
 const reviewTextInput = document.getElementById("review-text");
 const reviewsFeed = document.getElementById("reviews-feed");
 const reviewStatus = document.getElementById("review-status");
@@ -112,14 +111,12 @@ function startReviewCooldown(until) {
 reviewForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  const name = reviewNameInput.value.trim();
   const text = reviewTextInput.value.trim();
   if (!text) return;
 
   try {
-    const createdReview = await createReview({ name: name || "Гость", text, rating: getRating() });
+    const createdReview = await createReview({ text, rating: getRating() });
     reviewForm.reset();
-    reviewNameInput.value = reviewSession.user.user_metadata?.display_name || reviewSession.user.email || "Пользователь";
     setRating(5);
     const until = Date.now() + 10 * 60 * 1000;
     localStorage.setItem(reviewCooldownKey, String(until));
@@ -137,8 +134,6 @@ const reviewSession = await getCurrentSession();
 if (!reviewSession) {
   reviewSubmitButton.disabled = true;
   reviewStatus.innerHTML = 'Чтобы оставить отзыв, <a href="profile.html">войдите или зарегистрируйтесь</a>.';
-} else {
-  reviewNameInput.value = reviewSession.user.user_metadata?.display_name || reviewSession.user.email || "Пользователь";
 }
 const savedReviewCooldown = Number(localStorage.getItem(reviewCooldownKey) || 0);
 if (reviewSession && savedReviewCooldown > Date.now()) startReviewCooldown(savedReviewCooldown);
