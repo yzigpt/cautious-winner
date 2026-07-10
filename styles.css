@@ -2117,16 +2117,6 @@ body::before {
   width: min(1280px, 100%);
 }
 
-.site-nav__cta {
-  color: #07111f !important;
-  background: linear-gradient(135deg, #f6d37a, #ffe4a9) !important;
-  box-shadow: 0 10px 24px rgba(246, 211, 122, 0.18);
-}
-
-.site-nav__cta:hover {
-  transform: translateY(-2px) scale(1.02) !important;
-}
-
 .page--site {
   gap: 30px;
 }
@@ -2330,11 +2320,143 @@ body::before {
 }
 
 @media (max-width: 640px) {
-  .site-nav__cta { width: 100%; text-align: center; }
   .hero-card { padding: 28px 22px; }
   .hero-title { font-size: clamp(2.7rem, 14vw, 4.1rem); }
   .text-block ul { grid-template-columns: 1fr; }
   .cta-row { flex-direction: column; }
   .cta-row .cta-btn { width: 100%; justify-content: center; }
   .trust-rail { font-size: 0.76rem; }
+}
+
+/* Full-bleed landing composition with a lightweight CSS 3D background. */
+.page--landing {
+  padding-right: 0;
+  padding-left: 0;
+  gap: 0;
+  perspective: 1400px;
+  isolation: isolate;
+}
+
+.page--landing > .card {
+  width: 100%;
+  border-right: 0;
+  border-left: 0;
+  border-radius: 0;
+}
+
+.page--landing .hero-card {
+  margin-top: 0;
+  min-height: min(790px, calc(100vh - 80px));
+  border-top: 0;
+}
+
+.page--landing .trust-rail {
+  width: min(1180px, calc(100% - 48px));
+  z-index: 2;
+}
+
+.page--landing > :not(.ambient-3d):not(.hero__glow) {
+  z-index: 1;
+}
+
+.ambient-3d {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.ambient-3d__orb,
+.ambient-3d__plane {
+  position: absolute;
+  display: block;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.ambient-3d__orb {
+  border-radius: 50%;
+  filter: blur(1px);
+}
+
+.ambient-3d__orb--cyan {
+  width: min(42vw, 620px);
+  aspect-ratio: 1;
+  top: 5%;
+  right: -14vw;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(235, 252, 255, 0.92), rgba(102, 217, 255, 0.42) 22%, rgba(102, 217, 255, 0.06) 56%, transparent 70%);
+  box-shadow: 0 0 140px rgba(102, 217, 255, 0.2);
+  animation: orbitCyan 16s ease-in-out infinite alternate;
+}
+
+.ambient-3d__orb--gold {
+  width: min(28vw, 400px);
+  aspect-ratio: 1;
+  top: 48%;
+  left: -10vw;
+  background:
+    radial-gradient(circle at 36% 35%, rgba(255, 243, 210, 0.86), rgba(246, 211, 122, 0.32) 25%, rgba(246, 211, 122, 0.04) 62%, transparent 72%);
+  box-shadow: 0 0 120px rgba(246, 211, 122, 0.14);
+  animation: orbitGold 20s ease-in-out infinite alternate;
+}
+
+.ambient-3d__plane {
+  width: min(48vw, 700px);
+  aspect-ratio: 1.45;
+  border: 1px solid rgba(143, 227, 255, 0.18);
+  background: linear-gradient(135deg, rgba(102, 217, 255, 0.08), rgba(124, 140, 255, 0.01));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 30px 90px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(8px);
+}
+
+.ambient-3d__plane--one {
+  top: 9%;
+  right: -18vw;
+  transform: rotateX(62deg) rotateZ(-24deg) translateZ(-120px);
+  animation: planeFloatOne 18s ease-in-out infinite alternate;
+}
+
+.ambient-3d__plane--two {
+  top: 57%;
+  left: -20vw;
+  border-color: rgba(246, 211, 122, 0.12);
+  background: linear-gradient(135deg, rgba(246, 211, 122, 0.06), rgba(102, 217, 255, 0.01));
+  transform: rotateX(68deg) rotateZ(34deg) translateZ(-180px);
+  animation: planeFloatTwo 21s ease-in-out infinite alternate;
+}
+
+@keyframes orbitCyan {
+  from { transform: translate3d(0, 0, -140px) rotateX(0deg) rotateY(0deg); }
+  to { transform: translate3d(-7vw, 7vh, 180px) rotateX(24deg) rotateY(38deg); }
+}
+
+@keyframes orbitGold {
+  from { transform: translate3d(0, 0, -100px) rotateX(0deg) rotateY(0deg); }
+  to { transform: translate3d(9vw, -10vh, 160px) rotateX(-18deg) rotateY(-28deg); }
+}
+
+@keyframes planeFloatOne {
+  from { transform: rotateX(62deg) rotateZ(-24deg) translate3d(0, 0, -120px); }
+  to { transform: rotateX(50deg) rotateZ(-13deg) translate3d(-5vw, 8vh, 160px); }
+}
+
+@keyframes planeFloatTwo {
+  from { transform: rotateX(68deg) rotateZ(34deg) translate3d(0, 0, -180px); }
+  to { transform: rotateX(58deg) rotateZ(22deg) translate3d(6vw, -5vh, 120px); }
+}
+
+@media (max-width: 640px) {
+  .page--landing .trust-rail { width: calc(100% - 32px); }
+  .page--landing .hero-card { min-height: auto; }
+  .ambient-3d__orb--cyan { width: 92vw; right: -45vw; }
+  .ambient-3d__orb--gold { width: 76vw; left: -38vw; }
+  .ambient-3d__plane { width: 100vw; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-3d__orb,
+  .ambient-3d__plane { animation: none; }
 }
