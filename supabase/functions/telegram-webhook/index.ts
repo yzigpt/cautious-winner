@@ -36,12 +36,12 @@ type ProjectRequest = {
 function requestMenu() {
   return {
     inline_keyboard: [
-      [{ text: "📋 Все заявки", callback_data: "list:all" }],
+      [{ text: "📋 Все заявки", callback_data: "list:all:0" }],
       [
-        { text: "🆕 Новые", callback_data: "list:new" },
-        { text: "✅ Принятые", callback_data: "list:answered" },
+        { text: "🆕 Новые", callback_data: "list:new:0" },
+        { text: "✅ Принятые", callback_data: "list:answered:0" },
       ],
-      [{ text: "🚫 Отклонённые", callback_data: "list:rejected" }],
+      [{ text: "🚫 Отклонённые", callback_data: "list:rejected:0" }],
       [{ text: "⭐ Управление отзывами", callback_data: "reviews:list" }],
     ],
   };
@@ -51,7 +51,7 @@ function reviewMenu() {
   return {
     inline_keyboard: [
       [{ text: "🔄 Обновить отзывы", callback_data: "reviews:list" }],
-      [{ text: "📋 К заявкам", callback_data: "list:all" }],
+      [{ text: "📋 К заявкам", callback_data: "list:all:0" }],
     ],
   };
 }
@@ -59,12 +59,13 @@ function reviewMenu() {
 function requestActions(requestId: string) {
   return {
     inline_keyboard: [
+      [{ text: "👁 Открыть заявку", callback_data: `view:${requestId}` }],
       [
         { text: "✅ Взять в работу", callback_data: `request:${requestId}:answered` },
         { text: "🚫 Отклонить", callback_data: `request:${requestId}:rejected` },
       ],
       [{ text: "🗑 Удалить заявку", callback_data: `delete:${requestId}` }],
-      [{ text: "📋 К списку заявок", callback_data: "list:all" }],
+      [{ text: "📋 К списку заявок", callback_data: "list:all:0" }],
     ],
   };
 }
@@ -106,17 +107,18 @@ async function sendRequestList(
   supabase: any,
   botToken: string,
   chatId: number,
-  filter: "all" | "new" | "answered" | "rejected"
+  filter: "all" | "new" | "answered" | "rejected",
+  offset = 0
 ) {
   let query = supabase
     .from("project_requests")
-    .select("id, request_number, name, contact_details, text, status, created_at")
+    .select("id, request_number, name, contact_details, text, status, created_at", { count: "exact" })
     .order("created_at", { ascending: false })
-    .limit(12);
+    .range(offset, offset + 11);
 
   if (filter !== "all") query = query.eq("status", filter);
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   if (error) throw error;
   const requests = (data || []) as ProjectRequest[];
 
@@ -155,13 +157,30 @@ async function sendRequestList(
       callback_data: `view:${item.id}`,
     },
   ]);
+  const paginationButtons = [];
+  if (offset > 0) {
+    paginationButtons.push({
+      text: "⬅️ Назад",
+      callback_data: `list:${filter}:${Math.max(0, offset - 12)}`,
+    });
+  }
+  if (offset + requests.length < (count || 0)) {
+    paginationButtons.push({
+      text: "Вперёд ➡️",
+      callback_data: `list:${filter}:${offset + 12}`,
+    });
+  }
 
   await telegramRequest(botToken, "sendMessage", {
     chat_id: chatId,
     text: message,
     parse_mode: "HTML",
     reply_markup: {
-      inline_keyboard: [...detailButtons, ...requestMenu().inline_keyboard],
+      inline_keyboard: [
+        ...detailButtons,
+        ...(paginationButtons.length ? [paginationButtons] : []),
+        ...requestMenu().inline_keyboard,
+      ],
     },
   });
 }
@@ -310,10 +329,11 @@ Deno.serve(async (request) => {
       return new Response("ok", { status: 200 });
     }
 
-    const listMatch = String(callback?.data || "").match(/^list:(all|new|answered|rejected)$/i);
+    const listMatch = String(callback?.data || "").match(/^list:(all|new|answered|rejected)(?::(\d+))?$/i);
     if (callback && listMatch) {
       const filter = listMatch[1].toLowerCase() as "all" | "new" | "answered" | "rejected";
-      await sendRequestList(supabase, botToken, callback.message.chat.id, filter);
+      const offset = Number(listMatch[2] || 0);
+      await sendRequestList(supabase, botToken, callback.message.chat.id, filter, offset);
       await telegramRequest(botToken, "answerCallbackQuery", {
         callback_query_id: callback.id,
         text: "Список заявок обновлён",
@@ -431,7 +451,7 @@ Deno.serve(async (request) => {
     const match = String(callback?.data || "").match(/^request:([0-9a-f-]{36}):(answered|new|rejected)$/i);
     if (callback && match) {
       const [, requestId, status] = match;
-      await supabase
+      const { data: updatedRequest, error: updateError } = await supabase
         .from("project_requests")
         .update({
           status,
@@ -443,7 +463,10 @@ Deno.serve(async (request) => {
                 : null,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", requestId);
+        .eq("id", requestId)
+        .select("id, request_number, name, contact_details, text, status, created_at")
+        .single();
+      if (updateError || !updatedRequest) throw updateError || new Error("Request not found");
 
       await telegramRequest(botToken, "answerCallbackQuery", {
         callback_query_id: callback.id,
@@ -453,6 +476,27 @@ Deno.serve(async (request) => {
             : status === "rejected"
               ? "Заявка отклонена 🚫"
               : "Статус обновлён",
+      });
+
+      const createdAt = new Intl.DateTimeFormat("ru-RU", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Asia/Yekaterinburg",
+      }).format(new Date(updatedRequest.created_at));
+      await telegramRequest(botToken, "editMessageText", {
+        chat_id: callback.message.chat.id,
+        message_id: callback.message.message_id,
+        text: [
+          `<b>📌 Заявка №${updatedRequest.request_number}</b>`,
+          "",
+          `<b>👤 Клиент:</b> ${escapeHtml(updatedRequest.name)}`,
+          `<b>📞 Контакт:</b> ${escapeHtml(updatedRequest.contact_details)}`,
+          `<b>💬 Задача:</b> ${escapeHtml(updatedRequest.text)}`,
+          `<b>🏷 Статус:</b> ${statusLabel(updatedRequest.status)}`,
+          `<b>🕒 Время:</b> ${createdAt}`,
+        ].join("\n"),
+        parse_mode: "HTML",
+        reply_markup: requestActions(updatedRequest.id),
       });
     }
 

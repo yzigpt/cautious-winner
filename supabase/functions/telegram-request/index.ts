@@ -77,6 +77,7 @@ Deno.serve(async (request) => {
 
     const replyMarkup = {
       inline_keyboard: [
+        [{ text: "👁 Подробнее", callback_data: `view:${createdRequest.id}` }],
         [{ text: "✅ Взял в работу", callback_data: `request:${createdRequest.id}:answered` }],
         [{ text: "🚫 Отклонить заявку", callback_data: `request:${createdRequest.id}:rejected` }],
         [{ text: "🌐 Открыть сайт", url: siteUrl }],
