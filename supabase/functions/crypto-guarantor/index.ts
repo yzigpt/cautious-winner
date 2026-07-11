@@ -163,11 +163,10 @@ async function sendProfile(supabase: any, botToken: string, chatId: number) {
   const since = profile?.created_at
     ? new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeZone: "Asia/Yekaterinburg" }).format(new Date(profile.created_at))
     : "сегодня";
-  await telegram(botToken, "sendPhoto", {
+  await telegram(botToken, "sendMessage", {
     chat_id: chatId,
-    photo: "https://yzigpt.github.io/cautious-winner/assets/frog-garant-avatar.png",
     parse_mode: "HTML",
-    caption: [
+    text: [
       "<b>👤 Профиль ⌵</b>",
       "",
       `┠👤 Имя: ${escapeHtml(String(profile?.telegram_username || "Без имени"))}`,
