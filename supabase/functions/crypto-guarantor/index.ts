@@ -101,7 +101,7 @@ function startMenu() {
   ], [
     { text: "Мои сделки", callback_data: "menu:deals" },
     { text: "Как это работает", callback_data: "menu:help" },
-  ]] };
+  ], [{ text: "Профиль", callback_data: "menu:profile" }]] };
 }
 
 function roleMenu() {
@@ -137,6 +137,49 @@ async function sendHome(botToken: string, chatId: number) {
       "Деньги переводятся продавцу только после подтверждения покупателя.",
     ].join("\n"),
     reply_markup: startMenu(),
+  });
+}
+
+async function upsertProfile(supabase: any, chatId: number, telegramUser: any) {
+  const username = String(telegramUser?.username || telegramUser?.first_name || "Без имени").slice(0, 80);
+  const { error } = await supabase.from("crypto_guarantor_profiles").upsert({ chat_id: chatId, telegram_username: username }, { onConflict: "chat_id" });
+  if (error) throw error;
+  const { error: reputationError } = await supabase.from("crypto_profile_reputation").upsert({ chat_id: chatId }, { onConflict: "chat_id", ignoreDuplicates: true });
+  if (reputationError) throw reputationError;
+}
+
+async function sendProfile(supabase: any, botToken: string, chatId: number) {
+  const [{ data: profile, error: profileError }, { data: reputation, error: reputationError }, { data: deals, error: dealsError }] = await Promise.all([
+    supabase.from("crypto_guarantor_profiles").select("telegram_username, created_at").eq("chat_id", chatId).maybeSingle(),
+    supabase.from("crypto_profile_reputation").select("positive_count, negative_count").eq("chat_id", chatId).maybeSingle(),
+    supabase.from("crypto_deals").select("amount_usdt").or(`buyer_chat_id.eq.${chatId},seller_chat_id.eq.${chatId}`),
+  ]);
+  if (profileError || reputationError || dealsError) throw profileError || reputationError || dealsError;
+  const amount = (deals || []).reduce((sum: number, deal: any) => sum + Number(deal.amount_usdt || 0), 0);
+  const positive = Number(reputation?.positive_count || 0);
+  const negative = Number(reputation?.negative_count || 0);
+  const reputationValue = positive - negative;
+  const since = profile?.created_at
+    ? new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeZone: "Asia/Yekaterinburg" }).format(new Date(profile.created_at))
+    : "сегодня";
+  await telegram(botToken, "sendMessage", {
+    chat_id: chatId,
+    parse_mode: "HTML",
+    text: [
+      "<b>👤 Профиль ⌵</b>",
+      "",
+      `┠👤 Имя: ${escapeHtml(String(profile?.telegram_username || "Без имени"))}`,
+      `┠🆔 ID: <code>${chatId}</code>`,
+      `┖📅 В системе с: ${since}`,
+      "",
+      `┠⭐ Репутация: ${reputationValue}`,
+      `┠👍 Положительные: ${positive}`,
+      `┖👎 Отрицательные: ${negative}`,
+      "",
+      `┠🤝 Сделки: ${(deals || []).length} шт`,
+      `┖💵 Сумма сделок: ${amount.toFixed(2).replace(/\.00$/, "")} USDT`,
+    ].join("\n"),
+    reply_markup: { inline_keyboard: [[{ text: "Мои сделки", callback_data: "menu:deals" }], [{ text: "Главное меню", callback_data: "menu:home" }]] },
   });
 }
 
@@ -316,6 +359,7 @@ Deno.serve(async (request) => {
     const callback = update.callback_query;
     const chatId = Number(message?.chat?.id || callback?.message?.chat?.id);
     if (!Number.isSafeInteger(chatId)) return json({ ok: true });
+    await upsertProfile(supabase, chatId, message?.from || callback?.from);
     if (callback) await telegram(botToken, "answerCallbackQuery", { callback_query_id: callback.id });
     const text = String(message?.text || "");
     if (text.startsWith("/start")) {
@@ -338,6 +382,10 @@ Deno.serve(async (request) => {
     }
     if (callback?.data === "menu:deals") {
       await sendMyDeals(supabase, botToken, chatId);
+      return json({ ok: true });
+    }
+    if (callback?.data === "menu:profile") {
+      await sendProfile(supabase, botToken, chatId);
       return json({ ok: true });
     }
     if (callback?.data === "menu:help") {

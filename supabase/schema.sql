@@ -325,6 +325,27 @@ create table if not exists public.crypto_bot_states (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.crypto_guarantor_profiles (
+  chat_id bigint primary key,
+  telegram_username text,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.crypto_profile_reputation (
+  chat_id bigint primary key references public.crypto_guarantor_profiles(chat_id) on delete cascade,
+  positive_count integer not null default 0 check (positive_count >= 0),
+  negative_count integer not null default 0 check (negative_count >= 0),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+drop trigger if exists crypto_guarantor_profiles_touch_updated_at on public.crypto_guarantor_profiles;
+create trigger crypto_guarantor_profiles_touch_updated_at before update on public.crypto_guarantor_profiles
+for each row execute function public.touch_updated_at();
+drop trigger if exists crypto_profile_reputation_touch_updated_at on public.crypto_profile_reputation;
+create trigger crypto_profile_reputation_touch_updated_at before update on public.crypto_profile_reputation
+for each row execute function public.touch_updated_at();
+
 alter table public.crypto_deals drop constraint if exists crypto_deals_status_check;
 alter table public.crypto_deals add constraint crypto_deals_status_check check (status in ('awaiting_counterparty', 'awaiting_payment', 'paid', 'awaiting_buyer_confirmation', 'payout_processing', 'completed', 'disputed', 'refund_processing', 'refunded', 'cancelled'));
 
@@ -369,7 +390,9 @@ $$;
 
 alter table public.crypto_deals enable row level security;
 alter table public.crypto_bot_states enable row level security;
-revoke all on public.crypto_deals, public.crypto_bot_states from anon, authenticated;
+alter table public.crypto_guarantor_profiles enable row level security;
+alter table public.crypto_profile_reputation enable row level security;
+revoke all on public.crypto_deals, public.crypto_bot_states, public.crypto_guarantor_profiles, public.crypto_profile_reputation from anon, authenticated;
 revoke all on function public.claim_crypto_deal_payout(uuid, bigint) from public, anon, authenticated;
 grant execute on function public.claim_crypto_deal_payout(uuid, bigint) to service_role;
 revoke all on function public.claim_crypto_deal_refund(uuid) from public, anon, authenticated;
