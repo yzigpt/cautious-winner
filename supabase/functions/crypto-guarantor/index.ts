@@ -543,7 +543,13 @@ Deno.serve(async (request) => {
       }
       if (state?.step !== "terms") return json({ ok: true });
       const terms = text.trim().replace(/\s+/g, " ").slice(0, 2000);
-      if (terms.length < 12) return telegram(botToken, "sendMessage", { chat_id: chatId, text: "Опишите условия подробнее: минимум 12 символов." });
+      if (terms.length < 12) {
+        if (!state.payload.termsHintSent) {
+          await setState(supabase, chatId, "terms", { ...state.payload, termsHintSent: true });
+          await telegram(botToken, "sendMessage", { chat_id: chatId, text: "Добавьте чуть больше деталей к условиям сделки, затем отправьте текст снова." });
+        }
+        return json({ ok: true });
+      }
       const role = state.payload.role;
       const { data: deal, error } = await supabase.from("crypto_deals").insert({ creator_chat_id: chatId, creator_role: role, buyer_chat_id: role === "buyer" ? chatId : null, seller_chat_id: role === "seller" ? chatId : null, amount_usdt: state.payload.amount_usdt, fee_usdt: state.payload.fee_usdt, seller_payout_usdt: state.payload.seller_payout_usdt, terms }).select("*").single();
       if (error) throw error;
