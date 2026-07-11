@@ -40,6 +40,7 @@ function controlCenterMenu() {
         { text: "\u{2B50} \u041E\u0442\u0437\u044B\u0432\u044B", callback_data: "reviews:list" },
         { text: "\u{1F310} \u0421\u0430\u0439\u0442", callback_data: "site:menu" },
       ],
+      [{ text: "\u{1F6E1}\u{FE0F} \u0413\u0430\u0440\u0430\u043D\u0442", url: "https://t.me/FrogGarant_bot" }],
       [{ text: "\u{1F465} \u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u0438", callback_data: "users:list:0" }],
     ],
   };
