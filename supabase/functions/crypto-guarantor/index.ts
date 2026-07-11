@@ -100,14 +100,14 @@ function startMenu() {
     { text: "✦ Создать сделку", callback_data: "menu:new" },
   ], [
     { text: "▣ Мои сделки", callback_data: "menu:deals" },
-    { text: "◈ Защита сделки", callback_data: "menu:help" },
+    { text: "◈ Условия сделки", callback_data: "menu:help" },
   ], [{ text: "👤 Профиль", callback_data: "menu:profile" }]] };
 }
 
 function roleMenu() {
   return { inline_keyboard: [[
-    { text: "Я покупатель", callback_data: "new:buyer" },
-    { text: "Я продавец", callback_data: "new:seller" },
+    { text: "🛒 Я покупатель", callback_data: "new:buyer" },
+    { text: "💼 Я продавец", callback_data: "new:seller" },
   ], [{ text: "Назад", callback_data: "menu:home" }]] };
 }
 
@@ -130,12 +130,14 @@ async function sendHome(botToken: string, chatId: number) {
     chat_id: chatId,
     parse_mode: "HTML",
     text: [
-      "<b>FROG GARANT</b>",
+      "<b>🛡️ FROG GARANT</b>",
       "<code>USDT SAFE DEALS · 3% SERVICE FEE</code>",
       "",
+      "━━━━━━━━━━━━",
       "Безопасные сделки между покупателем и продавцом.",
       "Комиссия <b>3%</b> удерживается из выплаты продавцу.",
       "Деньги отправляются только после подтверждения покупателя.",
+      "━━━━━━━━━━━━",
     ].join("\n"),
     reply_markup: startMenu(),
   });
@@ -243,7 +245,7 @@ async function sendDealDetails(supabase: any, botToken: string, chatId: number, 
   await telegram(botToken, "sendMessage", {
     chat_id: chatId,
     parse_mode: "HTML",
-    text: `${dealText(deal)}\n\n👤 Покупатель: <b>${escapeHtml(buyerName)}</b>\n👤 Продавец: <b>${escapeHtml(sellerName)}</b>\n\n${dealTermsText(deal)}\n\nСтатус: <b>${statusLabel(deal.status)}</b>\nВаша роль: <b>${isBuyer ? "покупатель" : "продавец"}</b>\n\n<i>${nextStep}</i>`,
+    text: `🛡️ ${dealText(deal)}\n━━━━━━━━━━━━\n👤 Покупатель: <b>${escapeHtml(buyerName)}</b>\n👤 Продавец: <b>${escapeHtml(sellerName)}</b>\n━━━━━━━━━━━━\n${dealTermsText(deal)}\n━━━━━━━━━━━━\nСтатус: <b>${statusLabel(deal.status)}</b>\nВаша роль: <b>${isBuyer ? "покупатель" : "продавец"}</b>\n\n<i>✦ ${nextStep}</i>`,
     reply_markup: { inline_keyboard: actions },
   });
 }
@@ -419,7 +421,7 @@ Deno.serve(async (request) => {
       return json({ ok: true });
     }
     if (callback?.data === "menu:help") {
-      await telegram(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: "<b>Защита сделки</b>\n\n1. Создайте сделку, укажите сумму и условия.\n2. Отправьте ссылку второй стороне.\n3. Покупатель оплачивает USDT.\n4. Продавец отмечает выполнение условий.\n5. Покупатель подтверждает результат, после чего отправляется выплата.\n\nПри споре выплата останавливается до решения администратора." });
+      await telegram(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: "<b>◈ УСЛОВИЯ СДЕЛКИ</b>\n<code>ПРОЗРАЧНО · БЕЗОПАСНО · ПОНЯТНО</code>\n\n━━━━━━━━━━━━\n1. Создайте сделку, укажите сумму и условия.\n2. Отправьте ссылку второй стороне.\n3. Покупатель оплачивает USDT.\n4. Продавец отмечает выполнение условий.\n5. Покупатель подтверждает результат, после чего отправляется выплата.\n━━━━━━━━━━━━\n\n⚑ При споре выплата останавливается до решения администратора." });
       return json({ ok: true });
     }
     if (callback?.data?.startsWith("deal:view:")) {
