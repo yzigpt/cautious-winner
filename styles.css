@@ -4392,6 +4392,33 @@ body::after {
   .studio-visual__caption { top: 25px; left: 25px; }
 }
 
+/* Softer, more sculpted outer surfaces for the premium composition. */
+.page--landing .card { border-radius: 48px; }
+.page--landing .hero-card { border-radius: 54px; }
+.page--landing .feature-card,
+.page--landing .editorial-card,
+.page--landing .process-step { border-radius: 28px; }
+.page--landing .studio-visual,
+.page--landing .premium-showcase,
+.page--landing .process-card,
+.page--landing .final-cta { border-radius: 48px; }
+.page--landing .studio-visual__media { border-radius: 32px; }
+.page--landing .studio-visual__media::after { border-radius: 23px; }
+.page--landing .luxury-stat { border-radius: 28px; }
+
+@media (max-width: 640px) {
+  .page--landing .card { border-radius: 30px; }
+  .page--landing .hero-card,
+  .page--landing .studio-visual,
+  .page--landing .premium-showcase,
+  .page--landing .process-card,
+  .page--landing .final-cta { border-radius: 34px; }
+  .page--landing .feature-card,
+  .page--landing .luxury-stat,
+  .page--landing .editorial-card,
+  .page--landing .process-step { border-radius: 24px; }
+}
+
 .project-card__visual--studio::after {
   content: "";
   position: absolute;
