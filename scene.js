@@ -10,46 +10,6 @@ if (lowPowerDevice) {
   document.documentElement.classList.add("performance-mode");
 }
 
-if (!canvas && page) {
-  page.classList.add("page--with-scene");
-
-  const ambient = document.createElement("div");
-  ambient.className = "ambient-3d ambient-3d--page";
-  ambient.setAttribute("aria-hidden", "true");
-  ambient.innerHTML = `
-    <span class="ambient-3d__orb ambient-3d__orb--cyan"></span>
-    <span class="ambient-3d__orb ambient-3d__orb--gold"></span>
-    <span class="ambient-3d__plane ambient-3d__plane--one"></span>
-    <span class="ambient-3d__plane ambient-3d__plane--two"></span>
-    <span class="ambient-3d__ring ambient-3d__ring--one"></span>
-    <span class="ambient-3d__ring ambient-3d__ring--two"></span>
-  `;
-
-  canvas = document.createElement("canvas");
-  canvas.className = "scene-canvas scene-canvas--page";
-  canvas.setAttribute("aria-hidden", "true");
-  page.prepend(ambient, canvas);
-}
-
-const ambientLayer = document.querySelector(".ambient-3d");
-if (ambientLayer && !ambientLayer.querySelector(".ambient-3d__cube")) {
-  ambientLayer.insertAdjacentHTML(
-    "beforeend",
-    '<span class="ambient-3d__cube ambient-3d__cube--one"></span><span class="ambient-3d__cube ambient-3d__cube--two"></span>',
-  );
-}
-
-if (page && page.classList.contains("page--with-scene")) {
-  const cards = Array.from(page.querySelectorAll(".card"));
-  cards.forEach((card, index) => {
-    card.classList.add("card--with-model");
-    if (!card.querySelector(".card-3d")) {
-      const variant = index % 2 === 0 ? "card-3d--cyan" : "card-3d--gold";
-      card.insertAdjacentHTML("beforeend", `<span class="card-3d ${variant}" aria-hidden="true"></span>`);
-    }
-  });
-}
-
 function observeSceneActivity(setActive) {
   let inViewport = true;
   const host = canvas?.closest(".hero-card") || canvas;
@@ -82,7 +42,7 @@ function initFallbackScene() {
   const isCompact = window.matchMedia("(max-width: 640px)").matches;
   const particles = [];
   const pointer = { x: 0, y: 0 };
-  const count = isCompact ? 24 : 48;
+  const count = isCompact ? 18 : 32;
   const frameDuration = 1000 / (isCompact ? 20 : 30);
   let width = 0;
   let height = 0;
@@ -220,38 +180,10 @@ function initWebglScene(THREE) {
     opacity: 0.78,
     wireframe: true,
   });
-  const goldMaterial = new THREE.MeshStandardMaterial({
-    color: 0xf6d37a,
-    emissive: 0x5a3e0b,
-    emissiveIntensity: 0.72,
-    metalness: 0.6,
-    roughness: 0.24,
-    transparent: true,
-    opacity: 0.68,
-  });
-  const glassMaterial = new THREE.MeshStandardMaterial({
-    color: 0x8ce6ff,
-    emissive: 0x164d68,
-    emissiveIntensity: 0.54,
-    metalness: 0.2,
-    roughness: 0.12,
-    transparent: true,
-    opacity: 0.38,
-  });
-
   const knot = new THREE.Mesh(new THREE.TorusKnotGeometry(1.18, 0.28, 84, 12), cyanMaterial);
   knot.position.set(2.45, 0.55, -0.8);
   knot.rotation.set(0.35, -0.7, 0.2);
   stage.add(knot);
-
-  const crystal = new THREE.Mesh(new THREE.IcosahedronGeometry(1.05, 2), goldMaterial);
-  crystal.position.set(-2.7, -1.18, -1.15);
-  crystal.rotation.set(0.18, 0.5, -0.12);
-  stage.add(crystal);
-
-  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.82, 20, 20), glassMaterial);
-  orb.position.set(1.05, -2.05, -0.2);
-  stage.add(orb);
 
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(1.52, 0.035, 8, 64),
@@ -265,10 +197,6 @@ function initWebglScene(THREE) {
   const keyLight = new THREE.PointLight(0x8ce6ff, 26, 18, 2);
   keyLight.position.set(3.5, 4.5, 5);
   scene.add(keyLight);
-  const warmLight = new THREE.PointLight(0xf6d37a, 18, 14, 2);
-  warmLight.position.set(-4, -2, 4);
-  scene.add(warmLight);
-
   function resize() {
     const rect = canvas.getBoundingClientRect();
     width = Math.max(1, rect.width);
@@ -289,9 +217,6 @@ function initWebglScene(THREE) {
     stage.rotation.x += (-pointer.y * 0.12 - stage.rotation.x) * 0.018;
     knot.rotation.x = 0.35 + elapsed * 1.2;
     knot.rotation.z = 0.2 + elapsed * 0.75;
-    crystal.rotation.y = 0.5 - elapsed * 0.82;
-    crystal.rotation.x = 0.18 + elapsed * 0.35;
-    orb.position.y = -2.05 + Math.sin(elapsed * 3) * 0.18;
     ring.rotation.z = -0.52 + elapsed * 0.44;
     renderer.render(scene, camera);
     if (!reducedMotion) frameId = window.requestAnimationFrame(render);
