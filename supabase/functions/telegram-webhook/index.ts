@@ -89,6 +89,12 @@ async function sendGuarantorDealDetails(supabase: any, botToken: string, chatId:
   const sellerName = names.get(Number(deal.seller_chat_id)) || "не подключён";
   const canRefund = ["paid", "awaiting_buyer_confirmation", "disputed"].includes(deal.status);
   const actions: any[] = [];
+  if (deal.buyer_chat_id || deal.seller_chat_id) {
+    const participantLinks: any[] = [];
+    if (deal.buyer_chat_id) participantLinks.push({ text: "Открыть покупателя", url: `tg://user?id=${deal.buyer_chat_id}` });
+    if (deal.seller_chat_id) participantLinks.push({ text: "Открыть продавца", url: `tg://user?id=${deal.seller_chat_id}` });
+    actions.push(participantLinks);
+  }
   if (canRefund) actions.push([{ text: "Вернуть деньги покупателю", callback_data: `guarantor:refund:${deal.id}` }]);
   if (!["completed", "refunded", "refund_processing", "cancelled", "disputed"].includes(deal.status)) actions.push([{ text: "Остановить сделку", callback_data: `guarantor:stop:${deal.id}` }]);
   if (!["payout_processing", "refund_processing"].includes(deal.status)) actions.push([{ text: "Удалить из списка", callback_data: `guarantor:delete:${deal.id}` }]);
