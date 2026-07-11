@@ -13,6 +13,17 @@ async function telegramRequest(token: string, method: string, body: unknown) {
   if (!response.ok) console.error(`Telegram ${method} failed: ${response.status}`);
 }
 
+async function cryptoPayRequest(token: string, method: string, body: Record<string, unknown>) {
+  const response = await fetch(`https://pay.crypt.bot/api/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Crypto-Pay-API-Token": token },
+    body: JSON.stringify(body),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.ok) throw new Error(result?.error?.name || `Crypto Pay ${method} failed`);
+  return result.result;
+}
+
 function escapeHtml(value: string) {
   return value.replace(/[&<>]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[char] || char));
 }
@@ -22,6 +33,55 @@ function statusLabel(status: string) {
   if (status === "answered") return "✅ Принята";
   if (status === "rejected") return "🚫 Отклонена";
   return "🆕 Новая";
+}
+
+function cryptoDealStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    awaiting_counterparty: "Ожидает вторую сторону", awaiting_payment: "Ожидает оплату", paid: "Оплачено",
+    awaiting_buyer_confirmation: "Ожидает покупателя", payout_processing: "Выплата обрабатывается",
+    completed: "Завершена", disputed: "Остановлена / спор", refund_processing: "Возврат обрабатывается",
+    refunded: "Возвращена покупателю", cancelled: "Отменена",
+  };
+  return labels[status] || status;
+}
+
+function guarantorMenu() {
+  return { inline_keyboard: [
+    [{ text: "Все сделки", callback_data: "guarantor:list:0" }],
+    [{ text: "Открыть Frog Garant", url: "https://t.me/FrogGarant_bot" }],
+    [{ text: "Control Center", callback_data: "dashboard:home" }],
+  ] };
+}
+
+async function sendGuarantorPanel(supabase: any, botToken: string, chatId: number) {
+  const { data, error } = await supabase.from("crypto_deals").select("status");
+  if (error) throw error;
+  const deals = data || [];
+  const active = deals.filter((deal: any) => ["paid", "awaiting_buyer_confirmation", "disputed"].includes(deal.status)).length;
+  await telegramRequest(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: `<b>Гарант · управление сделками</b>\n\nВсего: <b>${deals.length}</b>\nТребуют внимания: <b>${active}</b>\n\nВозврат USDT доступен только для оплаченных незавершённых сделок и всегда требует подтверждения.`, reply_markup: guarantorMenu() });
+}
+
+async function sendGuarantorDeals(supabase: any, botToken: string, chatId: number, offset = 0) {
+  const { data, error, count } = await supabase.from("crypto_deals").select("id, deal_number, amount_usdt, status, created_at", { count: "exact" }).order("created_at", { ascending: false }).range(offset, offset + 9);
+  if (error) throw error;
+  const buttons: any[] = (data || []).map((deal: any) => [{ text: `#${deal.deal_number} · ${deal.amount_usdt} USDT · ${cryptoDealStatusLabel(deal.status)}`, callback_data: `guarantor:view:${deal.id}` }]);
+  const nav: any[] = [];
+  if (offset > 0) nav.push({ text: "Назад", callback_data: `guarantor:list:${Math.max(0, offset - 10)}` });
+  if (offset + 10 < Number(count || 0)) nav.push({ text: "Вперёд", callback_data: `guarantor:list:${offset + 10}` });
+  if (nav.length) buttons.push(nav);
+  buttons.push([{ text: "К панели гаранта", callback_data: "guarantor:menu" }]);
+  await telegramRequest(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: `<b>Все сделки</b>\nВсего: ${count || 0}`, reply_markup: { inline_keyboard: buttons } });
+}
+
+async function sendGuarantorDealDetails(supabase: any, botToken: string, chatId: number, dealId: string) {
+  const { data: deal, error } = await supabase.from("crypto_deals").select("*").eq("id", dealId).maybeSingle();
+  if (error || !deal) throw error || new Error("Crypto deal not found");
+  const canRefund = ["paid", "awaiting_buyer_confirmation", "disputed"].includes(deal.status);
+  const actions: any[] = [];
+  if (canRefund) actions.push([{ text: "Вернуть деньги покупателю", callback_data: `guarantor:refund:${deal.id}` }]);
+  if (!["completed", "refunded", "refund_processing", "cancelled", "disputed"].includes(deal.status)) actions.push([{ text: "Остановить сделку", callback_data: `guarantor:stop:${deal.id}` }]);
+  actions.push([{ text: "Все сделки", callback_data: "guarantor:list:0" }]);
+  await telegramRequest(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: [`<b>Сделка #${deal.deal_number}</b>`, `Сумма: <b>${deal.amount_usdt} USDT</b>`, `Комиссия: ${deal.fee_usdt} USDT`, `Выплата продавцу: ${deal.seller_payout_usdt} USDT`, `Статус: <b>${cryptoDealStatusLabel(deal.status)}</b>`, `Покупатель: <code>${deal.buyer_chat_id || "не подключён"}</code>`, `Продавец: <code>${deal.seller_chat_id || "не подключён"}</code>`, "", `<b>Условия</b>\n${escapeHtml(String(deal.terms || "Не указаны"))}`].join("\n"), reply_markup: { inline_keyboard: actions } });
 }
 
 function controlCenterMenu() {
@@ -40,7 +100,7 @@ function controlCenterMenu() {
         { text: "\u{2B50} \u041E\u0442\u0437\u044B\u0432\u044B", callback_data: "reviews:list" },
         { text: "\u{1F310} \u0421\u0430\u0439\u0442", callback_data: "site:menu" },
       ],
-      [{ text: "\u{1F6E1}\u{FE0F} \u0413\u0430\u0440\u0430\u043D\u0442", url: "https://t.me/FrogGarant_bot" }],
+      [{ text: "\u{1F6E1}\u{FE0F} \u0413\u0430\u0440\u0430\u043D\u0442", callback_data: "guarantor:menu" }],
       [{ text: "\u{1F465} \u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u0438", callback_data: "users:list:0" }],
     ],
   };
@@ -649,6 +709,71 @@ Deno.serve(async (request) => {
         text: "Нет доступа к заявкам",
         show_alert: true,
       });
+      return new Response("ok", { status: 200 });
+    }
+
+    if (callback && String(callback.data || "") === "guarantor:menu") {
+      await sendGuarantorPanel(supabase, botToken, callback.message.chat.id);
+      await telegramRequest(botToken, "answerCallbackQuery", { callback_query_id: callback.id, text: "Панель гаранта открыта" });
+      return new Response("ok", { status: 200 });
+    }
+
+    const guarantorListMatch = String(callback?.data || "").match(/^guarantor:list:(\d+)$/);
+    if (callback && guarantorListMatch) {
+      await sendGuarantorDeals(supabase, botToken, callback.message.chat.id, Number(guarantorListMatch[1] || 0));
+      await telegramRequest(botToken, "answerCallbackQuery", { callback_query_id: callback.id, text: "Список сделок обновлён" });
+      return new Response("ok", { status: 200 });
+    }
+
+    const guarantorViewMatch = String(callback?.data || "").match(/^guarantor:view:([0-9a-f-]{36})$/i);
+    if (callback && guarantorViewMatch) {
+      await sendGuarantorDealDetails(supabase, botToken, callback.message.chat.id, guarantorViewMatch[1]);
+      await telegramRequest(botToken, "answerCallbackQuery", { callback_query_id: callback.id, text: "Сделка открыта" });
+      return new Response("ok", { status: 200 });
+    }
+
+    const guarantorStopMatch = String(callback?.data || "").match(/^guarantor:stop:([0-9a-f-]{36})$/i);
+    if (callback && guarantorStopMatch) {
+      const { data: deal, error } = await supabase.from("crypto_deals").update({ status: "disputed" }).eq("id", guarantorStopMatch[1]).in("status", ["awaiting_counterparty", "awaiting_payment", "paid", "awaiting_buyer_confirmation"]).select("deal_number, buyer_chat_id, seller_chat_id").maybeSingle();
+      if (error || !deal) throw error || new Error("Deal cannot be stopped");
+      await Promise.all([
+        telegramRequest(botToken, "sendMessage", { chat_id: deal.buyer_chat_id, text: `Сделка #${deal.deal_number} остановлена администратором. Выплата не будет выполнена до решения спора.` }),
+        telegramRequest(botToken, "sendMessage", { chat_id: deal.seller_chat_id, text: `Сделка #${deal.deal_number} остановлена администратором. Выплата не будет выполнена до решения спора.` }),
+      ]);
+      await telegramRequest(botToken, "answerCallbackQuery", { callback_query_id: callback.id, text: "Сделка остановлена" });
+      await sendGuarantorDealDetails(supabase, botToken, callback.message.chat.id, guarantorStopMatch[1]);
+      return new Response("ok", { status: 200 });
+    }
+
+    const guarantorRefundMatch = String(callback?.data || "").match(/^guarantor:refund:([0-9a-f-]{36})$/i);
+    if (callback && guarantorRefundMatch) {
+      const { data: deal, error } = await supabase.from("crypto_deals").select("deal_number, amount_usdt, status").eq("id", guarantorRefundMatch[1]).maybeSingle();
+      if (error || !deal || !["paid", "awaiting_buyer_confirmation", "disputed"].includes(deal.status)) throw error || new Error("Refund is unavailable");
+      await telegramRequest(botToken, "sendMessage", { chat_id: callback.message.chat.id, parse_mode: "HTML", text: `<b>Вернуть ${deal.amount_usdt} USDT покупателю по сделке #${deal.deal_number}?</b>\n\nДеньги будут отправлены через Crypto Pay. Это действие нельзя отменить.`, reply_markup: { inline_keyboard: [[{ text: "Да, вернуть USDT", callback_data: `guarantor:refund-confirm:${guarantorRefundMatch[1]}` }], [{ text: "Отмена", callback_data: `guarantor:view:${guarantorRefundMatch[1]}` }]] } });
+      await telegramRequest(botToken, "answerCallbackQuery", { callback_query_id: callback.id, text: "Подтвердите возврат" });
+      return new Response("ok", { status: 200 });
+    }
+
+    const guarantorRefundConfirmMatch = String(callback?.data || "").match(/^guarantor:refund-confirm:([0-9a-f-]{36})$/i);
+    if (callback && guarantorRefundConfirmMatch) {
+      const { data: result, error } = await supabase.rpc("claim_crypto_deal_refund", { p_deal_id: guarantorRefundConfirmMatch[1] });
+      const refund = Array.isArray(result) ? result[0] : result;
+      if (error || !refund) throw error || new Error("Refund is unavailable");
+      try {
+        const cryptoToken = Deno.env.get("CRYPTO_PAY_API_TOKEN");
+        if (!cryptoToken) throw new Error("Crypto Pay is not configured");
+        const transfer = await cryptoPayRequest(cryptoToken, "transfer", { user_id: refund.buyer_chat_id, asset: "USDT", amount: String(refund.amount_usdt), spend_id: `admin-refund-${guarantorRefundConfirmMatch[1]}`, comment: `Возврат по сделке #${refund.deal_number}` });
+        const { data: deal, error: updateError } = await supabase.from("crypto_deals").update({ status: "refunded", refund_transfer_id: transfer.transfer_id, refunded_at: new Date().toISOString() }).eq("id", guarantorRefundConfirmMatch[1]).select("buyer_chat_id, seller_chat_id, deal_number, amount_usdt").single();
+        if (updateError || !deal) throw updateError || new Error("Refund update failed");
+        await Promise.all([
+          telegramRequest(botToken, "sendMessage", { chat_id: deal.buyer_chat_id, text: `По сделке #${deal.deal_number} администратор отправил вам возврат ${deal.amount_usdt} USDT.` }),
+          telegramRequest(botToken, "sendMessage", { chat_id: deal.seller_chat_id, text: `Сделка #${deal.deal_number} отменена администратором. Деньги возвращены покупателю.` }),
+        ]);
+        await telegramRequest(botToken, "answerCallbackQuery", { callback_query_id: callback.id, text: "Возврат успешно отправлен" });
+      } catch (refundError) {
+        await supabase.from("crypto_deals").update({ status: "disputed", last_error: String(refundError).slice(0, 500) }).eq("id", guarantorRefundConfirmMatch[1]);
+        throw refundError;
+      }
       return new Response("ok", { status: 200 });
     }
 

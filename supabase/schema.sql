@@ -297,18 +297,22 @@ create table if not exists public.crypto_deals (
   terms text not null default 'Не указаны' check (char_length(trim(terms)) > 0),
   fee_usdt numeric(20, 6) not null check (fee_usdt >= 0),
   seller_payout_usdt numeric(20, 6) not null check (seller_payout_usdt > 0),
-  status text not null default 'awaiting_counterparty' check (status in ('awaiting_counterparty', 'awaiting_payment', 'paid', 'awaiting_buyer_confirmation', 'payout_processing', 'completed', 'disputed', 'cancelled')),
+  status text not null default 'awaiting_counterparty' check (status in ('awaiting_counterparty', 'awaiting_payment', 'paid', 'awaiting_buyer_confirmation', 'payout_processing', 'completed', 'disputed', 'refund_processing', 'refunded', 'cancelled')),
   crypto_invoice_id bigint unique,
   crypto_invoice_hash text,
   payout_transfer_id bigint unique,
+  refund_transfer_id bigint unique,
   last_error text,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
   paid_at timestamptz,
+  refunded_at timestamptz,
   completed_at timestamptz
 );
 
 alter table public.crypto_deals add column if not exists terms text;
+alter table public.crypto_deals add column if not exists refund_transfer_id bigint unique;
+alter table public.crypto_deals add column if not exists refunded_at timestamptz;
 update public.crypto_deals set terms = 'Не указаны' where terms is null or char_length(trim(terms)) = 0;
 alter table public.crypto_deals alter column terms set not null;
 alter table public.crypto_deals drop constraint if exists crypto_deals_terms_check;
@@ -322,7 +326,7 @@ create table if not exists public.crypto_bot_states (
 );
 
 alter table public.crypto_deals drop constraint if exists crypto_deals_status_check;
-alter table public.crypto_deals add constraint crypto_deals_status_check check (status in ('awaiting_counterparty', 'awaiting_payment', 'paid', 'awaiting_buyer_confirmation', 'payout_processing', 'completed', 'disputed', 'cancelled'));
+alter table public.crypto_deals add constraint crypto_deals_status_check check (status in ('awaiting_counterparty', 'awaiting_payment', 'paid', 'awaiting_buyer_confirmation', 'payout_processing', 'completed', 'disputed', 'refund_processing', 'refunded', 'cancelled'));
 
 create index if not exists crypto_deals_status_created_at_idx
 on public.crypto_deals (status, created_at desc);
@@ -350,11 +354,26 @@ begin
 end;
 $$;
 
+create or replace function public.claim_crypto_deal_refund(p_deal_id uuid)
+returns table (buyer_chat_id bigint, amount_usdt numeric, deal_number bigint)
+language plpgsql security definer set search_path = public as $$
+begin
+  return query
+  update public.crypto_deals
+  set status = 'refund_processing', last_error = null
+  where id = p_deal_id
+    and status in ('paid', 'awaiting_buyer_confirmation', 'disputed')
+  returning crypto_deals.buyer_chat_id, crypto_deals.amount_usdt, crypto_deals.deal_number;
+end;
+$$;
+
 alter table public.crypto_deals enable row level security;
 alter table public.crypto_bot_states enable row level security;
 revoke all on public.crypto_deals, public.crypto_bot_states from anon, authenticated;
 revoke all on function public.claim_crypto_deal_payout(uuid, bigint) from public, anon, authenticated;
 grant execute on function public.claim_crypto_deal_payout(uuid, bigint) to service_role;
+revoke all on function public.claim_crypto_deal_refund(uuid) from public, anon, authenticated;
+grant execute on function public.claim_crypto_deal_refund(uuid) to service_role;
 
 do $$
 begin
