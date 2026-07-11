@@ -13,6 +13,15 @@ function guarantorAdminChatId() {
   return Deno.env.get("CRYPTO_GUARANTOR_ADMIN_CHAT_ID") || required("TELEGRAM_ADMIN_CHAT_ID");
 }
 
+function adminContactMenu() {
+  return {
+    inline_keyboard: [[{
+      text: "Написать администратору",
+      url: `tg://user?id=${guarantorAdminChatId()}`,
+    }]],
+  };
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
@@ -357,7 +366,25 @@ Deno.serve(async (request) => {
       }
       const { data: deal, error: disputeError } = await supabase.from("crypto_deals").update({ status: "disputed" }).eq("id", dealId).in("status", ["awaiting_payment", "paid", "awaiting_buyer_confirmation"]).select("*").maybeSingle();
       if (disputeError) throw disputeError;
-      if (deal) await telegram(botToken, "sendMessage", { chat_id: guarantorAdminChatId(), text: `Спор по сделке #${deal.deal_number}. Выплата остановлена.` });
+      if (deal) {
+        await Promise.all([
+          telegram(botToken, "sendMessage", {
+            chat_id: chatId,
+            text: `Спор по сделке #${deal.deal_number} открыт. Выплата остановлена. Напишите администратору, чтобы разобраться в ситуации.`,
+            reply_markup: adminContactMenu(),
+          }),
+          telegram(botToken, "sendMessage", {
+            chat_id: guarantorAdminChatId(),
+            text: `Спор по сделке #${deal.deal_number}.\nПокупатель: ${deal.buyer_chat_id}\nПродавец: ${deal.seller_chat_id}\nВыплата остановлена.`,
+            reply_markup: {
+              inline_keyboard: [[
+                { text: "Открыть покупателя", url: `tg://user?id=${deal.buyer_chat_id}` },
+                { text: "Открыть продавца", url: `tg://user?id=${deal.seller_chat_id}` },
+              ]],
+            },
+          }),
+        ]);
+      }
     } else if (message?.text) {
       const { data: state } = await supabase.from("crypto_bot_states").select("*").eq("chat_id", chatId).maybeSingle();
       if (state?.step === "amount") {
