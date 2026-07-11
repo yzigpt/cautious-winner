@@ -1,5 +1,14 @@
 let canvas = document.getElementById("scene-canvas");
 const page = document.querySelector(".page--site");
+const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const deviceMemory = navigator.deviceMemory || 8;
+const lowPowerDevice = window.matchMedia("(max-width: 760px)").matches
+  || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
+  || deviceMemory <= 4;
+
+if (lowPowerDevice) {
+  document.documentElement.classList.add("performance-mode");
+}
 
 if (!canvas && page) {
   page.classList.add("page--with-scene");
@@ -41,19 +50,45 @@ if (page && page.classList.contains("page--with-scene")) {
   });
 }
 
+function observeSceneActivity(setActive) {
+  let inViewport = true;
+  const host = canvas?.closest(".hero-card") || canvas;
+
+  const update = () => setActive(inViewport && document.visibilityState === "visible");
+
+  let observer = null;
+  if (host && "IntersectionObserver" in window) {
+    observer = new IntersectionObserver(([entry]) => {
+      inViewport = entry.isIntersecting;
+      update();
+    }, { threshold: 0.04 });
+    observer.observe(host);
+  }
+
+  document.addEventListener("visibilitychange", update);
+  update();
+
+  return () => {
+    observer?.disconnect();
+    document.removeEventListener("visibilitychange", update);
+  };
+}
+
 function initFallbackScene() {
-  if (!canvas || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (!canvas || prefersReducedMotion) return;
 
   const context = canvas.getContext("2d");
   if (!context) return;
   const isCompact = window.matchMedia("(max-width: 640px)").matches;
   const particles = [];
   const pointer = { x: 0, y: 0 };
-  const count = isCompact ? 38 : 82;
+  const count = isCompact ? 24 : 48;
+  const frameDuration = 1000 / (isCompact ? 20 : 30);
   let width = 0;
   let height = 0;
   let pixelRatio = 1;
   let frameId = null;
+  let lastRenderedAt = -Infinity;
 
   function createParticles() {
     particles.length = 0;
@@ -70,7 +105,7 @@ function initFallbackScene() {
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
-    pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+    pixelRatio = Math.min(window.devicePixelRatio || 1, 1.15);
     width = Math.max(1, rect.width);
     height = Math.max(1, rect.height);
     canvas.width = Math.round(width * pixelRatio);
@@ -92,6 +127,11 @@ function initFallbackScene() {
   }
 
   function draw(time) {
+    if (time - lastRenderedAt < frameDuration) {
+      frameId = window.requestAnimationFrame(draw);
+      return;
+    }
+    lastRenderedAt = time;
     context.clearRect(0, 0, width, height);
     const points = particles.map((particle) => project(particle, time));
 
@@ -127,11 +167,11 @@ function initFallbackScene() {
     pointer.y = (event.clientY / window.innerHeight - 0.5) * 2;
   }, { passive: true });
 
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden" && frameId) {
+  observeSceneActivity((active) => {
+    if (!active && frameId) {
       window.cancelAnimationFrame(frameId);
       frameId = null;
-    } else if (document.visibilityState === "visible" && !frameId) {
+    } else if (active && !frameId) {
       frameId = window.requestAnimationFrame(draw);
     }
   });
@@ -139,21 +179,20 @@ function initFallbackScene() {
   createParticles();
   resize();
   window.addEventListener("resize", resize, { passive: true });
-  frameId = window.requestAnimationFrame(draw);
 }
 
 function initWebglScene(THREE) {
   if (!canvas) return;
 
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reducedMotion = prefersReducedMotion;
   const isCompact = window.matchMedia("(max-width: 640px)").matches;
   const isLanding = page?.classList.contains("page--landing");
-  const frameDuration = 1000 / (isCompact ? 30 : isLanding ? 45 : 30);
+  const frameDuration = 1000 / (isCompact ? 20 : isLanding ? 30 : 24);
   canvas.classList.add("scene-canvas--webgl");
   const renderer = new THREE.WebGLRenderer({
     canvas,
     alpha: true,
-    antialias: true,
+    antialias: false,
     powerPreference: "low-power",
   });
   const scene = new THREE.Scene();
@@ -166,12 +205,12 @@ function initWebglScene(THREE) {
   let height = 0;
 
   renderer.setClearColor(0x000000, 0);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isCompact ? 1 : isLanding ? 1.35 : 1.15));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isCompact ? 1 : isLanding ? 1.1 : 1));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   camera.position.set(0, 0, 8.2);
   scene.add(stage);
 
-  const cyanMaterial = new THREE.MeshPhysicalMaterial({
+  const cyanMaterial = new THREE.MeshStandardMaterial({
     color: 0x66d9ff,
     emissive: 0x0d5b78,
     emissiveIntensity: 0.8,
@@ -181,7 +220,7 @@ function initWebglScene(THREE) {
     opacity: 0.78,
     wireframe: true,
   });
-  const goldMaterial = new THREE.MeshPhysicalMaterial({
+  const goldMaterial = new THREE.MeshStandardMaterial({
     color: 0xf6d37a,
     emissive: 0x5a3e0b,
     emissiveIntensity: 0.72,
@@ -190,7 +229,7 @@ function initWebglScene(THREE) {
     transparent: true,
     opacity: 0.68,
   });
-  const glassMaterial = new THREE.MeshPhysicalMaterial({
+  const glassMaterial = new THREE.MeshStandardMaterial({
     color: 0x8ce6ff,
     emissive: 0x164d68,
     emissiveIntensity: 0.54,
@@ -200,7 +239,7 @@ function initWebglScene(THREE) {
     opacity: 0.38,
   });
 
-  const knot = new THREE.Mesh(new THREE.TorusKnotGeometry(1.18, 0.28, 144, 20), cyanMaterial);
+  const knot = new THREE.Mesh(new THREE.TorusKnotGeometry(1.18, 0.28, 84, 12), cyanMaterial);
   knot.position.set(2.45, 0.55, -0.8);
   knot.rotation.set(0.35, -0.7, 0.2);
   stage.add(knot);
@@ -210,12 +249,12 @@ function initWebglScene(THREE) {
   crystal.rotation.set(0.18, 0.5, -0.12);
   stage.add(crystal);
 
-  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.82, 32, 32), glassMaterial);
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.82, 20, 20), glassMaterial);
   orb.position.set(1.05, -2.05, -0.2);
   stage.add(orb);
 
   const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(1.52, 0.035, 12, 96),
+    new THREE.TorusGeometry(1.52, 0.035, 8, 64),
     new THREE.MeshBasicMaterial({ color: 0x9aeaff, transparent: true, opacity: 0.56 }),
   );
   ring.position.set(-1.6, 1.7, -1.5);
@@ -264,24 +303,25 @@ function initWebglScene(THREE) {
   }, { passive: true });
 
   window.addEventListener("resize", resize, { passive: true });
-  document.addEventListener("visibilitychange", () => {
+  observeSceneActivity((active) => {
     if (reducedMotion) return;
-    if (document.visibilityState === "hidden" && frameId) {
+    if (!active && frameId) {
       window.cancelAnimationFrame(frameId);
       frameId = null;
-    } else if (document.visibilityState === "visible" && !frameId) {
+    } else if (active && !frameId) {
       frameId = window.requestAnimationFrame(render);
     }
   });
 
   resize();
-  render();
 }
 
-if (canvas) {
+if (canvas && !lowPowerDevice && !prefersReducedMotion) {
   import("https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js")
     .then(initWebglScene)
     .catch(initFallbackScene);
+} else if (canvas) {
+  canvas.remove();
 }
 
 const sections = Array.from(document.querySelectorAll(".page--landing > .card, .page--landing .trust-rail"));
