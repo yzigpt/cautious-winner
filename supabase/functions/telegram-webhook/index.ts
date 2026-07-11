@@ -62,7 +62,7 @@ async function sendGuarantorPanel(supabase: any, botToken: string, chatId: numbe
 }
 
 async function sendGuarantorDeals(supabase: any, botToken: string, chatId: number, offset = 0) {
-  const { data, error, count } = await supabase.from("crypto_deals").select("id, deal_number, amount_usdt, status, created_at", { count: "exact" }).order("created_at", { ascending: false }).range(offset, offset + 9);
+  const { data, error, count } = await supabase.from("crypto_deals").select("id, deal_number, amount_usdt, status, created_at", { count: "exact" }).is("admin_archived_at", null).order("created_at", { ascending: false }).range(offset, offset + 9);
   if (error) throw error;
   const buttons: any[] = (data || []).map((deal: any) => [{ text: `#${deal.deal_number} · ${deal.amount_usdt} USDT · ${cryptoDealStatusLabel(deal.status)}`, callback_data: `guarantor:view:${deal.id}` }]);
   const nav: any[] = [];
@@ -80,6 +80,7 @@ async function sendGuarantorDealDetails(supabase: any, botToken: string, chatId:
   const actions: any[] = [];
   if (canRefund) actions.push([{ text: "Вернуть деньги покупателю", callback_data: `guarantor:refund:${deal.id}` }]);
   if (!["completed", "refunded", "refund_processing", "cancelled", "disputed"].includes(deal.status)) actions.push([{ text: "Остановить сделку", callback_data: `guarantor:stop:${deal.id}` }]);
+  if (!["payout_processing", "refund_processing"].includes(deal.status)) actions.push([{ text: "Удалить из списка", callback_data: `guarantor:delete:${deal.id}` }]);
   actions.push([{ text: "Все сделки", callback_data: "guarantor:list:0" }]);
   await telegramRequest(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: [`<b>Сделка #${deal.deal_number}</b>`, `Сумма: <b>${deal.amount_usdt} USDT</b>`, `Комиссия: ${deal.fee_usdt} USDT`, `Выплата продавцу: ${deal.seller_payout_usdt} USDT`, `Статус: <b>${cryptoDealStatusLabel(deal.status)}</b>`, `Покупатель: <code>${deal.buyer_chat_id || "не подключён"}</code>`, `Продавец: <code>${deal.seller_chat_id || "не подключён"}</code>`, "", `<b>Условия</b>\n${escapeHtml(String(deal.terms || "Не указаны"))}`].join("\n"), reply_markup: { inline_keyboard: actions } });
 }
@@ -774,6 +775,36 @@ Deno.serve(async (request) => {
         await supabase.from("crypto_deals").update({ status: "disputed", last_error: String(refundError).slice(0, 500) }).eq("id", guarantorRefundConfirmMatch[1]);
         throw refundError;
       }
+      return new Response("ok", { status: 200 });
+    }
+
+    const guarantorDeleteMatch = String(callback?.data || "").match(/^guarantor:delete:([0-9a-f-]{36})$/i);
+    if (callback && guarantorDeleteMatch) {
+      const { data: deal, error } = await supabase.from("crypto_deals").select("deal_number, status").eq("id", guarantorDeleteMatch[1]).is("admin_archived_at", null).maybeSingle();
+      if (error || !deal || ["payout_processing", "refund_processing"].includes(deal.status)) throw error || new Error("Deal cannot be archived");
+      await telegramRequest(botToken, "sendMessage", {
+        chat_id: callback.message.chat.id,
+        parse_mode: "HTML",
+        text: `<b>Удалить сделку #${deal.deal_number} из списка гаранта?</b>\n\nСделка будет скрыта из панели, но запись сохранится в финансовом журнале.`,
+        reply_markup: { inline_keyboard: [[{ text: "Да, удалить из списка", callback_data: `guarantor:delete-confirm:${guarantorDeleteMatch[1]}` }], [{ text: "Отмена", callback_data: `guarantor:view:${guarantorDeleteMatch[1]}` }]] },
+      });
+      await telegramRequest(botToken, "answerCallbackQuery", { callback_query_id: callback.id, text: "Подтвердите удаление" });
+      return new Response("ok", { status: 200 });
+    }
+
+    const guarantorDeleteConfirmMatch = String(callback?.data || "").match(/^guarantor:delete-confirm:([0-9a-f-]{36})$/i);
+    if (callback && guarantorDeleteConfirmMatch) {
+      const { data: deal, error } = await supabase.from("crypto_deals")
+        .update({ admin_archived_at: new Date().toISOString() })
+        .eq("id", guarantorDeleteConfirmMatch[1])
+        .is("admin_archived_at", null)
+        .in("status", ["awaiting_counterparty", "awaiting_payment", "paid", "awaiting_buyer_confirmation", "completed", "disputed", "refunded", "cancelled"])
+        .select("deal_number")
+        .maybeSingle();
+      if (error || !deal) throw error || new Error("Deal cannot be archived");
+      await telegramRequest(botToken, "answerCallbackQuery", { callback_query_id: callback.id, text: "Сделка удалена из списка" });
+      await telegramRequest(botToken, "sendMessage", { chat_id: callback.message.chat.id, text: `Сделка #${deal.deal_number} удалена из списка гаранта.` });
+      await sendGuarantorDeals(supabase, botToken, callback.message.chat.id);
       return new Response("ok", { status: 200 });
     }
 

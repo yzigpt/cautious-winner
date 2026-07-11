@@ -303,6 +303,7 @@ create table if not exists public.crypto_deals (
   payout_transfer_id bigint unique,
   refund_transfer_id bigint unique,
   last_error text,
+  admin_archived_at timestamptz,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
   paid_at timestamptz,
@@ -313,6 +314,7 @@ create table if not exists public.crypto_deals (
 alter table public.crypto_deals add column if not exists terms text;
 alter table public.crypto_deals add column if not exists refund_transfer_id bigint unique;
 alter table public.crypto_deals add column if not exists refunded_at timestamptz;
+alter table public.crypto_deals add column if not exists admin_archived_at timestamptz;
 update public.crypto_deals set terms = 'Не указаны' where terms is null or char_length(trim(terms)) = 0;
 alter table public.crypto_deals alter column terms set not null;
 alter table public.crypto_deals drop constraint if exists crypto_deals_terms_check;
@@ -363,6 +365,7 @@ create index if not exists crypto_deals_status_created_at_idx
 on public.crypto_deals (status, created_at desc);
 create index if not exists crypto_deals_buyer_chat_id_idx on public.crypto_deals (buyer_chat_id);
 create index if not exists crypto_deals_seller_chat_id_idx on public.crypto_deals (seller_chat_id);
+create index if not exists crypto_deals_admin_archived_at_idx on public.crypto_deals (admin_archived_at) where admin_archived_at is null;
 
 drop trigger if exists crypto_deals_touch_updated_at on public.crypto_deals;
 create trigger crypto_deals_touch_updated_at before update on public.crypto_deals
