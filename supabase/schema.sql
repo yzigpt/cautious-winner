@@ -193,13 +193,22 @@ language sql
 security definer
 set search_path = public
 as $$
+  with request_stats as (
+    select
+      count(*) as total_requests,
+      count(*) filter (where status = 'new') as new_requests,
+      count(*) filter (where status = 'answered') as active_requests,
+      count(*) filter (where status = 'completed') as completed_requests
+    from public.project_requests
+  )
   select
-    (select count(*) from public.project_requests),
-    (select count(*) from public.project_requests where status = 'new'),
-    (select count(*) from public.project_requests where status = 'answered'),
-    (select count(*) from public.project_requests where status = 'completed'),
+    request_stats.total_requests,
+    request_stats.new_requests,
+    request_stats.active_requests,
+    request_stats.completed_requests,
     (select count(*) from public.reviews),
-    coalesce((select requests_enabled from public.site_settings where id = 1), true);
+    coalesce((select requests_enabled from public.site_settings where id = 1), true)
+  from request_stats;
 $$;
 
 drop trigger if exists project_requests_touch_updated_at on public.project_requests;
@@ -263,6 +272,15 @@ using (user_id = auth.uid());
 
 create index if not exists project_requests_user_id_created_at_idx
 on public.project_requests (user_id, created_at desc);
+
+create index if not exists project_requests_status_created_at_idx
+on public.project_requests (status, created_at desc);
+
+create index if not exists project_requests_created_at_idx
+on public.project_requests (created_at desc);
+
+create index if not exists reviews_created_at_idx
+on public.reviews (created_at desc);
 
 do $$
 begin

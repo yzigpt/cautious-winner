@@ -40,6 +40,16 @@ async function hasRestrictedAccess(supabase: any, userId: string | null, ipHash:
   return Boolean(ipControl) || Boolean(accountControl && accountControl.account_status !== "active");
 }
 
+function continueInBackground(task: Promise<unknown>) {
+  const edgeRuntime = (globalThis as typeof globalThis & {
+    EdgeRuntime?: { waitUntil: (promise: Promise<unknown>) => void };
+  }).EdgeRuntime;
+
+  // Keep non-critical Telegram delivery out of the visitor's response path.
+  edgeRuntime?.waitUntil(task);
+  task.catch((error) => console.error("Telegram notification failed", error));
+}
+
 Deno.serve(async (request) => {
   if (request.headers.get("origin") !== allowedOrigin) {
     return json({ ok: false, error: "Origin not allowed" }, 403);
@@ -70,28 +80,28 @@ Deno.serve(async (request) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const { data: siteSettings, error: siteSettingsError } = await supabase
-      .from("site_settings")
-      .select("requests_enabled")
-      .eq("id", 1)
-      .maybeSingle();
+    const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+    const forwardedFor = request.headers.get("x-forwarded-for") || "unknown";
+    const clientIp = forwardedFor.split(",")[0].trim();
+    const [siteSettingsResult, userResult, ipHash] = await Promise.all([
+      supabase.from("site_settings").select("requests_enabled").eq("id", 1).maybeSingle(),
+      accessToken?.startsWith("eyJ")
+        ? supabase.auth.getUser(accessToken)
+        : Promise.resolve({ data: { user: null }, error: null }),
+      hashValue(clientIp),
+    ]);
+
+    const { data: siteSettings, error: siteSettingsError } = siteSettingsResult;
     if (siteSettingsError) throw siteSettingsError;
     if (siteSettings && !siteSettings.requests_enabled) {
       return json({ ok: false, error: "Requests are temporarily disabled" }, 503);
     }
-    const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
     let userId = null;
     if (accessToken?.startsWith("eyJ")) {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser(accessToken);
+      const { data: { user }, error: userError } = userResult;
       if (userError || !user) return json({ ok: false, error: "Invalid session" }, 401);
       userId = user.id;
     }
-    const forwardedFor = request.headers.get("x-forwarded-for") || "unknown";
-    const clientIp = forwardedFor.split(",")[0].trim();
-    const ipHash = await hashValue(clientIp);
     if (await hasRestrictedAccess(supabase, userId, ipHash)) {
       return json({ ok: false, error: "Access from this account or network is restricted" }, 403);
     }
@@ -142,7 +152,7 @@ Deno.serve(async (request) => {
       ],
     };
 
-    const notificationResults = await Promise.all(
+    const notificationTask = Promise.allSettled(
       (chats || []).map(async ({ chat_id }) => {
         const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
@@ -154,14 +164,15 @@ Deno.serve(async (request) => {
             reply_markup: replyMarkup,
           }),
         });
-        return response.ok;
+        if (!response.ok) throw new Error(`Telegram returned ${response.status}`);
       })
     );
+    continueInBackground(notificationTask);
 
     return json({
       ok: true,
       requestId: createdRequest.id,
-      notificationSent: notificationResults.some(Boolean),
+      notificationQueued: (chats || []).length > 0,
     });
   } catch (error) {
     console.error(error);
