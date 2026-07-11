@@ -3923,6 +3923,9 @@ body::before {
 .guarantor-project__visual img {
   object-position: center;
   filter: saturate(0.92) contrast(1.05);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .guarantor-project__link {
