@@ -55,12 +55,34 @@ function formatUsdt(micros: bigint) {
   return fraction ? `${whole}.${fraction}` : whole.toString();
 }
 
+function escapeHtml(value: string) {
+  return value.replace(/[&<>]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[char] || char));
+}
+
 function dealText(deal: any) {
   return [
     `<b>Сделка #${deal.deal_number}</b>`,
     `Сумма: <b>${deal.amount_usdt} USDT</b>`,
     `Комиссия сервиса: <b>${deal.fee_usdt} USDT (3%)</b>`,
     `Продавец получит: <b>${deal.seller_payout_usdt} USDT</b>`,
+  ].join("\n");
+}
+
+function dealTermsText(deal: any) {
+  return `<b>Условия сделки</b>\n${escapeHtml(String(deal.terms || "Не указаны"))}`;
+}
+
+function termsPrompt() {
+  return [
+    "<b>✏️ Условия сделки ⌵</b>",
+    "",
+    "✏️ Опишите условия сделки.",
+    "",
+    "┠ℹ️ Укажите:",
+    "┠ что передается;",
+    "┠ сроки;",
+    "┠ что считается выполнением;",
+    "┖ что считается нарушением.",
   ].join("\n");
 }
 
@@ -141,7 +163,7 @@ async function sendDealDetails(supabase: any, botToken: string, chatId: number, 
   await telegram(botToken, "sendMessage", {
     chat_id: chatId,
     parse_mode: "HTML",
-    text: `${dealText(deal)}\nСтатус: <b>${statusLabel(deal.status)}</b>\nВаша роль: <b>${isBuyer ? "покупатель" : "продавец"}</b>`,
+    text: `${dealText(deal)}\n\n${dealTermsText(deal)}\n\nСтатус: <b>${statusLabel(deal.status)}</b>\nВаша роль: <b>${isBuyer ? "покупатель" : "продавец"}</b>`,
     reply_markup: { inline_keyboard: actions },
   });
 }
@@ -164,7 +186,7 @@ async function sendDealInvite(supabase: any, botToken: string, deal: any) {
   await telegram(botToken, "sendMessage", {
     chat_id: deal.creator_chat_id,
     parse_mode: "HTML",
-    text: `${dealText(deal)}\n\nОтправьте эту ссылку ${counterparty}:\nhttps://t.me/${botName}?start=deal_${deal.id}`,
+    text: `${dealText(deal)}\n\n${dealTermsText(deal)}\n\nОтправьте эту ссылку ${counterparty}:\nhttps://t.me/${botName}?start=deal_${deal.id}`,
   });
 }
 
@@ -178,11 +200,11 @@ async function joinDeal(supabase: any, botToken: string, chatId: number, dealId:
   const { data: joined, error: joinError } = await supabase.from("crypto_deals")
     .update({ [field]: chatId, status: "awaiting_payment" }).eq("id", dealId).eq("status", "awaiting_counterparty").select("*").maybeSingle();
   if (joinError || !joined) throw joinError || new Error("Deal was changed");
-  await telegram(botToken, "sendMessage", { chat_id: joined.seller_chat_id, parse_mode: "HTML", text: `${dealText(joined)}\n\nПокупатель получит кнопку оплаты.` });
+  await telegram(botToken, "sendMessage", { chat_id: joined.seller_chat_id, parse_mode: "HTML", text: `${dealText(joined)}\n\n${dealTermsText(joined)}\n\nПокупатель получит кнопку оплаты.` });
   await telegram(botToken, "sendMessage", {
     chat_id: joined.buyer_chat_id,
     parse_mode: "HTML",
-    text: `${dealText(joined)}\n\nПеред оплатой: <b>3% от суммы удерживается как комиссия сервиса.</b>`,
+    text: `${dealText(joined)}\n\n${dealTermsText(joined)}\n\nПеред оплатой: <b>3% от суммы удерживается как комиссия сервиса.</b>`,
     reply_markup: { inline_keyboard: [[{ text: "Оплатить USDT", callback_data: `pay:${joined.id}` }], [{ text: "Открыть спор", callback_data: `dispute:${joined.id}` }]] },
   });
 }
@@ -338,14 +360,20 @@ Deno.serve(async (request) => {
       if (deal) await telegram(botToken, "sendMessage", { chat_id: guarantorAdminChatId(), text: `Спор по сделке #${deal.deal_number}. Выплата остановлена.` });
     } else if (message?.text) {
       const { data: state } = await supabase.from("crypto_bot_states").select("*").eq("chat_id", chatId).maybeSingle();
-      if (state?.step !== "amount") return json({ ok: true });
-      const amount = parseUsdt(text.trim());
-      if (!amount) return telegram(botToken, "sendMessage", { chat_id: chatId, text: "Введите корректную сумму USDT, например: 100 или 25.50" });
-      const fee = (amount * BigInt(feeBasisPoints) + 9_999n) / 10_000n;
-      const payout = amount - fee;
-      if (payout <= 0n) return telegram(botToken, "sendMessage", { chat_id: chatId, text: "Сумма слишком мала для создания сделки." });
+      if (state?.step === "amount") {
+        const amount = parseUsdt(text.trim());
+        if (!amount) return telegram(botToken, "sendMessage", { chat_id: chatId, text: "Введите корректную сумму USDT, например: 100 или 25.50" });
+        const fee = (amount * BigInt(feeBasisPoints) + 9_999n) / 10_000n;
+        const payout = amount - fee;
+        if (payout <= 0n) return telegram(botToken, "sendMessage", { chat_id: chatId, text: "Сумма слишком мала для создания сделки." });
+        await setState(supabase, chatId, "terms", { role: state.payload.role, amount_usdt: formatUsdt(amount), fee_usdt: formatUsdt(fee), seller_payout_usdt: formatUsdt(payout) });
+        return telegram(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: termsPrompt() });
+      }
+      if (state?.step !== "terms") return json({ ok: true });
+      const terms = text.trim().replace(/\s+/g, " ").slice(0, 2000);
+      if (terms.length < 12) return telegram(botToken, "sendMessage", { chat_id: chatId, text: "Опишите условия подробнее: минимум 12 символов." });
       const role = state.payload.role;
-      const { data: deal, error } = await supabase.from("crypto_deals").insert({ creator_chat_id: chatId, creator_role: role, buyer_chat_id: role === "buyer" ? chatId : null, seller_chat_id: role === "seller" ? chatId : null, amount_usdt: formatUsdt(amount), fee_usdt: formatUsdt(fee), seller_payout_usdt: formatUsdt(payout) }).select("*").single();
+      const { data: deal, error } = await supabase.from("crypto_deals").insert({ creator_chat_id: chatId, creator_role: role, buyer_chat_id: role === "buyer" ? chatId : null, seller_chat_id: role === "seller" ? chatId : null, amount_usdt: state.payload.amount_usdt, fee_usdt: state.payload.fee_usdt, seller_payout_usdt: state.payload.seller_payout_usdt, terms }).select("*").single();
       if (error) throw error;
       await clearState(supabase, chatId);
       await sendDealInvite(supabase, botToken, deal);

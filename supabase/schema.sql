@@ -294,6 +294,7 @@ create table if not exists public.crypto_deals (
   buyer_chat_id bigint,
   seller_chat_id bigint,
   amount_usdt numeric(20, 6) not null check (amount_usdt > 0),
+  terms text not null default 'Не указаны' check (char_length(trim(terms)) > 0),
   fee_usdt numeric(20, 6) not null check (fee_usdt >= 0),
   seller_payout_usdt numeric(20, 6) not null check (seller_payout_usdt > 0),
   status text not null default 'awaiting_counterparty' check (status in ('awaiting_counterparty', 'awaiting_payment', 'paid', 'awaiting_buyer_confirmation', 'payout_processing', 'completed', 'disputed', 'cancelled')),
@@ -306,6 +307,12 @@ create table if not exists public.crypto_deals (
   paid_at timestamptz,
   completed_at timestamptz
 );
+
+alter table public.crypto_deals add column if not exists terms text;
+update public.crypto_deals set terms = 'Не указаны' where terms is null or char_length(trim(terms)) = 0;
+alter table public.crypto_deals alter column terms set not null;
+alter table public.crypto_deals drop constraint if exists crypto_deals_terms_check;
+alter table public.crypto_deals add constraint crypto_deals_terms_check check (char_length(trim(terms)) > 0);
 
 create table if not exists public.crypto_bot_states (
   chat_id bigint primary key,
