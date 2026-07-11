@@ -97,11 +97,11 @@ function termsPrompt() {
 
 function startMenu() {
   return { inline_keyboard: [[
-    { text: "Создать сделку", callback_data: "menu:new" },
+    { text: "✦ Создать сделку", callback_data: "menu:new" },
   ], [
-    { text: "Мои сделки", callback_data: "menu:deals" },
-    { text: "Как это работает", callback_data: "menu:help" },
-  ], [{ text: "Профиль", callback_data: "menu:profile" }]] };
+    { text: "▣ Мои сделки", callback_data: "menu:deals" },
+    { text: "◈ Защита сделки", callback_data: "menu:help" },
+  ], [{ text: "👤 Профиль", callback_data: "menu:profile" }]] };
 }
 
 function roleMenu() {
@@ -113,14 +113,14 @@ function roleMenu() {
 
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
-    awaiting_counterparty: "Ожидает вторую сторону",
-    awaiting_payment: "Ожидает оплату",
-    paid: "Оплачено, заказ выполняется",
-    awaiting_buyer_confirmation: "Ожидает покупателя",
-    payout_processing: "Выплата обрабатывается",
-    completed: "Завершена",
-    disputed: "Спор",
-    cancelled: "Отменена",
+    awaiting_counterparty: "⌛ Ожидает вторую сторону",
+    awaiting_payment: "◌ Ожидает оплату",
+    paid: "◈ Заказ выполняется",
+    awaiting_buyer_confirmation: "✓ Ожидает покупателя",
+    payout_processing: "↻ Выплата обрабатывается",
+    completed: "✦ Завершена",
+    disputed: "⚑ Спор",
+    cancelled: "− Отменена",
   };
   return labels[status] || status;
 }
@@ -130,11 +130,12 @@ async function sendHome(botToken: string, chatId: number) {
     chat_id: chatId,
     parse_mode: "HTML",
     text: [
-      "<b>Frog Garant</b>",
-      "Безопасные сделки в USDT.",
+      "<b>FROG GARANT</b>",
+      "<code>USDT SAFE DEALS · 3% SERVICE FEE</code>",
       "",
-      "Комиссия сервиса: <b>3%</b>, удерживается из выплаты продавцу.",
-      "Деньги переводятся продавцу только после подтверждения покупателя.",
+      "Безопасные сделки между покупателем и продавцом.",
+      "Комиссия <b>3%</b> удерживается из выплаты продавцу.",
+      "Деньги отправляются только после подтверждения покупателя.",
     ].join("\n"),
     reply_markup: startMenu(),
   });
@@ -219,10 +220,17 @@ async function sendDealDetails(supabase: any, botToken: string, chatId: number, 
   if (deal.status === "awaiting_buyer_confirmation" && isBuyer) actions.push([{ text: "Подтвердить выполнение", callback_data: `confirm:${deal.id}` }]);
   if (["awaiting_payment", "paid", "awaiting_buyer_confirmation"].includes(deal.status)) actions.push([{ text: "Открыть спор", callback_data: `dispute:${deal.id}` }]);
   actions.push([{ text: "Мои сделки", callback_data: "menu:deals" }]);
+  const nextStep = deal.status === "awaiting_payment" && isBuyer
+    ? "Следующий шаг: оплатите счёт в USDT."
+    : deal.status === "paid" && !isBuyer
+      ? "Следующий шаг: выполните условия и отметьте заказ."
+      : deal.status === "awaiting_buyer_confirmation" && isBuyer
+        ? "Следующий шаг: проверьте результат и подтвердите сделку."
+        : "Следите за статусом сделки в этом разделе.";
   await telegram(botToken, "sendMessage", {
     chat_id: chatId,
     parse_mode: "HTML",
-    text: `${dealText(deal)}\n\n${dealTermsText(deal)}\n\nСтатус: <b>${statusLabel(deal.status)}</b>\nВаша роль: <b>${isBuyer ? "покупатель" : "продавец"}</b>`,
+    text: `${dealText(deal)}\n\n${dealTermsText(deal)}\n\nСтатус: <b>${statusLabel(deal.status)}</b>\nВаша роль: <b>${isBuyer ? "покупатель" : "продавец"}</b>\n\n<i>${nextStep}</i>`,
     reply_markup: { inline_keyboard: actions },
   });
 }
@@ -398,7 +406,7 @@ Deno.serve(async (request) => {
       return json({ ok: true });
     }
     if (callback?.data === "menu:help") {
-      await telegram(botToken, "sendMessage", { chat_id: chatId, text: "1. Создайте сделку и укажите сумму.\n2. Отправьте ссылку второй стороне.\n3. Покупатель оплачивает USDT.\n4. Продавец отмечает выполнение.\n5. Покупатель подтверждает результат, после чего отправляется выплата.\n\nПри споре выплата останавливается." });
+      await telegram(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: "<b>Защита сделки</b>\n\n1. Создайте сделку, укажите сумму и условия.\n2. Отправьте ссылку второй стороне.\n3. Покупатель оплачивает USDT.\n4. Продавец отмечает выполнение условий.\n5. Покупатель подтверждает результат, после чего отправляется выплата.\n\nПри споре выплата останавливается до решения администратора." });
       return json({ ok: true });
     }
     if (callback?.data?.startsWith("deal:view:")) {
