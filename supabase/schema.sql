@@ -282,6 +282,70 @@ on public.project_requests (created_at desc);
 create index if not exists reviews_created_at_idx
 on public.reviews (created_at desc);
 
+-- Standalone Telegram crypto-guarantor. These tables are service-role only and
+-- are intentionally not exposed to the public website.
+create sequence if not exists public.crypto_deal_number_seq;
+
+create table if not exists public.crypto_deals (
+  id uuid primary key default gen_random_uuid(),
+  deal_number bigint not null default nextval('public.crypto_deal_number_seq') unique,
+  creator_chat_id bigint not null,
+  creator_role text not null check (creator_role in ('buyer', 'seller')),
+  buyer_chat_id bigint,
+  seller_chat_id bigint,
+  amount_usdt numeric(20, 6) not null check (amount_usdt > 0),
+  fee_usdt numeric(20, 6) not null check (fee_usdt >= 0),
+  seller_payout_usdt numeric(20, 6) not null check (seller_payout_usdt > 0),
+  status text not null default 'awaiting_counterparty' check (status in ('awaiting_counterparty', 'awaiting_payment', 'paid', 'payout_processing', 'completed', 'disputed', 'cancelled')),
+  crypto_invoice_id bigint unique,
+  crypto_invoice_hash text,
+  payout_transfer_id bigint unique,
+  last_error text,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  paid_at timestamptz,
+  completed_at timestamptz
+);
+
+create table if not exists public.crypto_bot_states (
+  chat_id bigint primary key,
+  step text not null,
+  payload jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists crypto_deals_status_created_at_idx
+on public.crypto_deals (status, created_at desc);
+create index if not exists crypto_deals_buyer_chat_id_idx on public.crypto_deals (buyer_chat_id);
+create index if not exists crypto_deals_seller_chat_id_idx on public.crypto_deals (seller_chat_id);
+
+drop trigger if exists crypto_deals_touch_updated_at on public.crypto_deals;
+create trigger crypto_deals_touch_updated_at before update on public.crypto_deals
+for each row execute function public.touch_updated_at();
+drop trigger if exists crypto_bot_states_touch_updated_at on public.crypto_bot_states;
+create trigger crypto_bot_states_touch_updated_at before update on public.crypto_bot_states
+for each row execute function public.touch_updated_at();
+
+create or replace function public.claim_crypto_deal_payout(p_deal_id uuid, p_buyer_chat_id bigint)
+returns table (seller_chat_id bigint, seller_payout_usdt numeric, deal_number bigint)
+language plpgsql security definer set search_path = public as $$
+begin
+  return query
+  update public.crypto_deals
+  set status = 'payout_processing', last_error = null
+  where id = p_deal_id
+    and buyer_chat_id = p_buyer_chat_id
+    and status = 'paid'
+  returning crypto_deals.seller_chat_id, crypto_deals.seller_payout_usdt, crypto_deals.deal_number;
+end;
+$$;
+
+alter table public.crypto_deals enable row level security;
+alter table public.crypto_bot_states enable row level security;
+revoke all on public.crypto_deals, public.crypto_bot_states from anon, authenticated;
+revoke all on function public.claim_crypto_deal_payout(uuid, bigint) from public, anon, authenticated;
+grant execute on function public.claim_crypto_deal_payout(uuid, bigint) to service_role;
+
 do $$
 begin
   alter publication supabase_realtime add table public.project_requests;
