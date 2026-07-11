@@ -69,8 +69,8 @@ async function sendGuarantorDeals(supabase: any, botToken: string, chatId: numbe
   const { data: profiles, error: profilesError } = await supabase.from("crypto_guarantor_profiles").select("chat_id, telegram_username").in("chat_id", participantIds);
   if (profilesError) throw profilesError;
   const names = new Map((profiles || []).map((profile: any) => [Number(profile.chat_id), String(profile.telegram_username || "Без имени")]));
-  const summary = deals.map((deal: any) => `#${deal.deal_number} · <b>${deal.amount_usdt} USDT</b>\nПокупатель: ${escapeHtml(names.get(Number(deal.buyer_chat_id)) || "не подключён")}\nПродавец: ${escapeHtml(names.get(Number(deal.seller_chat_id)) || "не подключён")}\n${cryptoDealStatusLabel(deal.status)}`).join("\n\n");
-  const buttons: any[] = deals.map((deal: any) => [{ text: `Открыть сделку #${deal.deal_number}`, callback_data: `guarantor:view:${deal.id}` }]);
+  const summary = deals.map((deal: any, index: number) => `№${offset + index + 1} · <b>${deal.amount_usdt} USDT</b>\nПокупатель: ${escapeHtml(names.get(Number(deal.buyer_chat_id)) || "не подключён")}\nПродавец: ${escapeHtml(names.get(Number(deal.seller_chat_id)) || "не подключён")}\n${cryptoDealStatusLabel(deal.status)}`).join("\n\n");
+  const buttons: any[] = deals.map((deal: any, index: number) => [{ text: `Открыть сделку №${offset + index + 1}`, callback_data: `guarantor:view:${deal.id}` }]);
   const nav: any[] = [];
   if (offset > 0) nav.push({ text: "Назад", callback_data: `guarantor:list:${Math.max(0, offset - 10)}` });
   if (offset + 10 < Number(count || 0)) nav.push({ text: "Вперёд", callback_data: `guarantor:list:${offset + 10}` });
@@ -745,8 +745,14 @@ Deno.serve(async (request) => {
 
     const guarantorViewMatch = String(callback?.data || "").match(/^guarantor:view:([0-9a-f-]{36})$/i);
     if (callback && guarantorViewMatch) {
-      await sendGuarantorDealDetails(supabase, botToken, callback.message.chat.id, guarantorViewMatch[1]);
-      await telegramRequest(botToken, "answerCallbackQuery", { callback_query_id: callback.id, text: "Сделка открыта" });
+      try {
+        await sendGuarantorDealDetails(supabase, botToken, callback.message.chat.id, guarantorViewMatch[1]);
+        await telegramRequest(botToken, "answerCallbackQuery", { callback_query_id: callback.id, text: "Сделка открыта" });
+      } catch (viewError) {
+        console.error("Could not open crypto deal", viewError);
+        await telegramRequest(botToken, "answerCallbackQuery", { callback_query_id: callback.id, text: "Не удалось открыть сделку", show_alert: true });
+        await telegramRequest(botToken, "sendMessage", { chat_id: callback.message.chat.id, text: "Не удалось загрузить карточку сделки. Откройте список ещё раз." });
+      }
       return new Response("ok", { status: 200 });
     }
 

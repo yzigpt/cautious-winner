@@ -237,13 +237,13 @@ async function sendMyDeals(supabase: any, botToken: string, chatId: number) {
   const { data: profiles, error: profilesError } = await supabase.from("crypto_guarantor_profiles").select("chat_id, telegram_username").in("chat_id", participantIds);
   if (profilesError) throw profilesError;
   const names = new Map((profiles || []).map((profile: any) => [Number(profile.chat_id), String(profile.telegram_username || "Без имени")]));
-  const summary = deals.map((deal: any) => {
+  const summary = deals.map((deal: any, index: number) => {
     const isBuyer = Number(deal.buyer_chat_id) === chatId;
     const counterpartId = isBuyer ? Number(deal.seller_chat_id) : Number(deal.buyer_chat_id);
     const counterpart = names.get(counterpartId) || "ожидает подключения";
-    return `#${deal.deal_number} · <b>${deal.amount_usdt} USDT</b>\n${isBuyer ? "Продавец" : "Покупатель"}: ${escapeHtml(counterpart)}\n${statusLabel(deal.status)}`;
+    return `№${index + 1} · <b>${deal.amount_usdt} USDT</b>\n${isBuyer ? "Продавец" : "Покупатель"}: ${escapeHtml(counterpart)}\n${statusLabel(deal.status)}`;
   }).join("\n━━━━━━━━━━━━\n");
-  const buttons = deals.map((deal: any) => [{ text: `Открыть сделку #${deal.deal_number}`, callback_data: `deal:view:${deal.id}` }]);
+  const buttons = deals.map((deal: any, index: number) => [{ text: `Открыть сделку №${index + 1}`, callback_data: `deal:view:${deal.id}` }]);
   buttons.push([{ text: "Главное меню", callback_data: "menu:home" }]);
   const active = deals.filter((deal: any) => !["completed", "refunded", "cancelled"].includes(deal.status)).length;
   await telegram(botToken, "sendMessage", { chat_id: chatId, text: `<b>▣ МОИ СДЕЛКИ</b>\n<code>LIVE STATUS · USDT</code>\nАктивных: <b>${active}</b> · Всего: <b>${deals.length}</b>\n━━━━━━━━━━━━\n${summary}`, parse_mode: "HTML", reply_markup: { inline_keyboard: buttons } });
@@ -477,7 +477,12 @@ Deno.serve(async (request) => {
       return json({ ok: true });
     }
     if (callback?.data?.startsWith("deal:view:")) {
-      await sendDealDetails(supabase, botToken, chatId, callback.data.slice(10));
+      try {
+        await sendDealDetails(supabase, botToken, chatId, callback.data.slice(10));
+      } catch (viewError) {
+        console.error("Could not open deal", viewError);
+        await telegram(botToken, "sendMessage", { chat_id: chatId, text: "Не удалось открыть карточку сделки. Обновите список и попробуйте ещё раз." });
+      }
       return json({ ok: true });
     }
     const ratingMatch = String(callback?.data || "").match(/^rate:([0-9a-f-]{36}):(\d+):(-?1)$/i);
