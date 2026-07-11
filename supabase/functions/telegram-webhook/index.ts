@@ -1012,11 +1012,21 @@ Deno.serve(async (request) => {
 
     const viewMatch = String(callback?.data || "").match(/^view:([0-9a-f-]{36})$/i);
     if (callback && viewMatch) {
-      await sendRequestDetails(supabase, botToken, callback.message.chat.id, viewMatch[1]);
-      await telegramRequest(botToken, "answerCallbackQuery", {
-        callback_query_id: callback.id,
-        text: "Заявка открыта",
-      });
+      try {
+        await sendRequestDetails(supabase, botToken, callback.message.chat.id, viewMatch[1]);
+        await telegramRequest(botToken, "answerCallbackQuery", {
+          callback_query_id: callback.id,
+          text: "Заявка открыта",
+        });
+      } catch (viewError) {
+        console.error("Could not open project request", viewError);
+        await telegramRequest(botToken, "answerCallbackQuery", {
+          callback_query_id: callback.id,
+          text: "Заявка больше недоступна",
+          show_alert: true,
+        });
+        await sendRequestList(supabase, botToken, callback.message.chat.id, "all");
+      }
       return new Response("ok", { status: 200 });
     }
 
