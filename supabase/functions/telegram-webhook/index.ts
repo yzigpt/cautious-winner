@@ -118,6 +118,7 @@ function controlCenterMenu() {
         { text: "🌐 Сайт", callback_data: "site:menu" },
       ],
       [{ text: "🛡️ Гарант", callback_data: "guarantor:menu" }, { text: "👥 Пользователи", callback_data: "users:list:0" }],
+      [{ text: "📡 Радар заявок", callback_data: "dashboard:radar" }],
       [{ text: "↻ Обновить сводку", callback_data: "dashboard:home" }],
     ],
   };
@@ -151,6 +152,41 @@ async function sendControlCenter(supabase: any, botToken: string, chatId: number
     ].join("\n"),
     parse_mode: "HTML",
     reply_markup: controlCenterMenu(),
+  });
+}
+
+async function sendRequestRadar(supabase: any, botToken: string, chatId: number) {
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const [{ count: newCount, error: newError }, { count: activeCount, error: activeError }, { count: todayCount, error: todayError }, { data: recent, error: recentError }] = await Promise.all([
+    supabase.from("project_requests").select("*", { count: "exact", head: true }).eq("status", "new"),
+    supabase.from("project_requests").select("*", { count: "exact", head: true }).eq("status", "answered"),
+    supabase.from("project_requests").select("*", { count: "exact", head: true }).gte("created_at", dayAgo),
+    supabase.from("project_requests").select("id, request_number, name, text, created_at").order("created_at", { ascending: false }).limit(5),
+  ]);
+  if (newError || activeError || todayError || recentError) throw newError || activeError || todayError || recentError;
+  const recentRows = (recent || []).map((item: any) => `• <b>№${item.request_number} · ${escapeHtml(item.name)}</b>\n  ${escapeHtml(String(item.text || "").slice(0, 90))}`).join("\n\n");
+  await telegramRequest(botToken, "sendMessage", {
+    chat_id: chatId,
+    parse_mode: "HTML",
+    text: [
+      "<b>📡 РАДАР ЗАЯВОК</b>",
+      "<code>LIVE ACTIVITY · LAST 24H</code>",
+      "",
+      "━━━━━━━━━━━━",
+      `🆕 Ожидают ответа: <b>${newCount || 0}</b>`,
+      `⚡ В работе: <b>${activeCount || 0}</b>`,
+      `☀️ Поступило за 24 часа: <b>${todayCount || 0}</b>`,
+      "━━━━━━━━━━━━",
+      "",
+      recentRows || "Новых обращений пока нет.",
+    ].join("\n"),
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🆕 Открыть новые", callback_data: "list:new:0" }, { text: "⚡ В работе", callback_data: "list:answered:0" }],
+        [{ text: "📥 Все заявки", callback_data: "list:all:0" }],
+        [{ text: "◆ Control Center", callback_data: "dashboard:home" }],
+      ],
+    },
   });
 }
 
@@ -665,7 +701,7 @@ Deno.serve(async (request) => {
       await sendControlCenter(supabase, botToken, chat.id);
       return new Response("ok", { status: 200 });
     }
-    if (message?.chat && ["/start", "/requests", "/заявки", "/reviews", "/отзывы", "/site", "/сайт", "/help"].includes(command)) {
+    if (message?.chat && ["/start", "/requests", "/заявки", "/radar", "/радар", "/reviews", "/отзывы", "/site", "/сайт", "/help"].includes(command)) {
       const chat = message.chat;
       const isKnownChat = await isConnectedAdmin(supabase, chat.id);
       const { count, error: chatCountError } = await supabase
@@ -694,6 +730,11 @@ Deno.serve(async (request) => {
         return new Response("ok", { status: 200 });
       }
 
+      if (["/radar", "/радар"].includes(command)) {
+        await sendRequestRadar(supabase, botToken, chat.id);
+        return new Response("ok", { status: 200 });
+      }
+
       if (["/reviews", "/отзывы"].includes(command)) {
         await sendReviewList(supabase, botToken, chat.id);
         return new Response("ok", { status: 200 });
@@ -706,7 +747,7 @@ Deno.serve(async (request) => {
 
       await telegramRequest(botToken, "sendMessage", {
         chat_id: chat.id,
-        text: "<b>✨ Frog Oxide Control Center</b>\n\nВаш аккуратный центр управления сайтом. Новые заявки приходят сюда мгновенно, а статусы синхронизируются с личными кабинетами клиентов.\n\n<b>Быстрые команды:</b>\n/requests - заявки\n/reviews - отзывы\n/site - управление сайтом",
+        text: "<b>✨ Frog Oxide Control Center</b>\n\nВаш центр управления сайтом и заявками.\n\n<b>Быстрые команды:</b>\n/requests — заявки\n/radar — свежие обращения\n/reviews — отзывы\n/site — управление сайтом",
         parse_mode: "HTML",
         reply_markup: requestMenuWithCompletion(),
       });
@@ -820,6 +861,15 @@ Deno.serve(async (request) => {
       await telegramRequest(botToken, "answerCallbackQuery", { callback_query_id: callback.id, text: "Сделка удалена из списка" });
       await telegramRequest(botToken, "sendMessage", { chat_id: callback.message.chat.id, text: `Сделка #${deal.deal_number} удалена из списка гаранта.` });
       await sendGuarantorDeals(supabase, botToken, callback.message.chat.id);
+      return new Response("ok", { status: 200 });
+    }
+
+    if (callback && String(callback.data || "") === "dashboard:radar") {
+      await sendRequestRadar(supabase, botToken, callback.message.chat.id);
+      await telegramRequest(botToken, "answerCallbackQuery", {
+        callback_query_id: callback.id,
+        text: "Радар обновлён",
+      });
       return new Response("ok", { status: 200 });
     }
 
