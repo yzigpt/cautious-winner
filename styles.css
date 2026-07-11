@@ -381,8 +381,8 @@ body {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  opacity: 0.74;
-  mask-image: linear-gradient(105deg, black, rgba(0, 0, 0, 0.7) 62%, transparent 100%);
+  opacity: 0.94;
+  mask-image: linear-gradient(105deg, black 0%, rgba(0, 0, 0, 0.88) 74%, transparent 100%);
 }
 
 .hero-card .hero-topline,

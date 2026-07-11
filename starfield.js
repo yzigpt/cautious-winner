@@ -12,9 +12,10 @@ if (canvas && host && !reducedMotion && !saveData) {
   const context = canvas.getContext("2d", { alpha: true });
 
   if (context) {
-    const count = lowPower ? 20 : 46;
+    const count = lowPower ? 46 : 92;
     const frameDuration = 1000 / (lowPower ? 18 : 30);
-    const connectionDistance = lowPower ? 86 : 118;
+    const connectionDistance = lowPower ? 128 : 154;
+    const connectionDistanceSquared = connectionDistance * connectionDistance;
     const stars = [];
     let width = 0;
     let height = 0;
@@ -31,9 +32,9 @@ if (canvas && host && !reducedMotion && !saveData) {
         stars.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          speedX: (Math.random() - 0.5) * (lowPower ? 0.54 : 0.96),
-          speedY: (Math.random() - 0.5) * (lowPower ? 0.42 : 0.75),
-          radius: Math.random() * 1.15 + 0.45,
+          speedX: (Math.random() - 0.5) * (lowPower ? 2.8 : 5.2),
+          speedY: (Math.random() - 0.5) * (lowPower ? 2.2 : 4),
+          radius: Math.random() * 1.45 + 0.65,
           shimmer: Math.random() * Math.PI * 2,
         });
       }
@@ -82,11 +83,11 @@ if (canvas && host && !reducedMotion && !saveData) {
           const neighbour = stars[second];
           const distanceX = star.x - neighbour.x;
           const distanceY = star.y - neighbour.y;
-          const distance = Math.hypot(distanceX, distanceY);
+          const distanceSquared = distanceX * distanceX + distanceY * distanceY;
 
-          if (distance >= connectionDistance) continue;
+          if (distanceSquared >= connectionDistanceSquared) continue;
 
-          const opacity = (1 - distance / connectionDistance) * 0.18;
+          const opacity = (1 - Math.sqrt(distanceSquared) / connectionDistance) * 0.32;
           context.strokeStyle = `rgba(145, 221, 255, ${opacity})`;
           context.lineWidth = 0.6;
           context.beginPath();
@@ -97,8 +98,8 @@ if (canvas && host && !reducedMotion && !saveData) {
       }
 
       stars.forEach((star) => {
-        const pulse = 0.55 + Math.sin(time * 0.001 + star.shimmer) * 0.25;
-        context.fillStyle = `rgba(219, 247, 255, ${pulse})`;
+        const pulse = 0.7 + Math.sin(time * 0.002 + star.shimmer) * 0.22;
+        context.fillStyle = `rgba(225, 249, 255, ${pulse})`;
         context.beginPath();
         context.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
         context.fill();
