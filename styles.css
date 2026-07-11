@@ -374,6 +374,23 @@ body {
   pointer-events: none;
 }
 
+.starfield-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.74;
+  mask-image: linear-gradient(105deg, black, rgba(0, 0, 0, 0.7) 62%, transparent 100%);
+}
+
+.hero-card .hero-topline,
+.hero-card .hero-grid,
+.hero-card .feature-grid {
+  position: relative;
+}
+
 .page-intro {
   display: grid;
   gap: 18px;
