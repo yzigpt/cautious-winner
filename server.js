@@ -324,9 +324,12 @@ async function serveFile(res, filename) {
   try {
     const filePath = path.join(ROOT, filename);
     const data = await fs.readFile(filePath);
+    const cacheControl = path.extname(filename).toLowerCase() === ".html"
+      ? "no-cache"
+      : "public, max-age=300, must-revalidate";
     res.writeHead(200, {
       "Content-Type": getContentType(filePath),
-      "Cache-Control": "no-store",
+      "Cache-Control": cacheControl,
     });
     res.end(data);
   } catch {

@@ -180,6 +180,28 @@ begin
 end;
 $$;
 
+create or replace function public.get_control_center_stats()
+returns table (
+  total_requests bigint,
+  new_requests bigint,
+  active_requests bigint,
+  completed_requests bigint,
+  total_reviews bigint,
+  requests_enabled boolean
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    (select count(*) from public.project_requests),
+    (select count(*) from public.project_requests where status = 'new'),
+    (select count(*) from public.project_requests where status = 'answered'),
+    (select count(*) from public.project_requests where status = 'completed'),
+    (select count(*) from public.reviews),
+    coalesce((select requests_enabled from public.site_settings where id = 1), true);
+$$;
+
 drop trigger if exists project_requests_touch_updated_at on public.project_requests;
 create trigger project_requests_touch_updated_at
 before update on public.project_requests
@@ -229,6 +251,8 @@ revoke all on function public.check_request_rate_limit(text) from public, anon, 
 grant execute on function public.check_request_rate_limit(text) to service_role;
 revoke all on function public.delete_project_request_and_renumber(uuid) from public, anon, authenticated;
 grant execute on function public.delete_project_request_and_renumber(uuid) to service_role;
+revoke all on function public.get_control_center_stats() from public, anon, authenticated;
+grant execute on function public.get_control_center_stats() to service_role;
 
 drop policy if exists "users can read own project requests" on public.project_requests;
 create policy "users can read own project requests"

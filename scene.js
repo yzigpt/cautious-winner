@@ -146,6 +146,9 @@ function initWebglScene(THREE) {
   if (!canvas) return;
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const isCompact = window.matchMedia("(max-width: 640px)").matches;
+  const isLanding = page?.classList.contains("page--landing");
+  const frameDuration = 1000 / (isCompact ? 30 : isLanding ? 45 : 30);
   canvas.classList.add("scene-canvas--webgl");
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -158,11 +161,12 @@ function initWebglScene(THREE) {
   const stage = new THREE.Group();
   const pointer = { x: 0, y: 0 };
   let frameId = null;
+  let lastRenderedAt = -Infinity;
   let width = 0;
   let height = 0;
 
   renderer.setClearColor(0x000000, 0);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isCompact ? 1 : isLanding ? 1.35 : 1.15));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   camera.position.set(0, 0, 8.2);
   scene.add(stage);
@@ -236,6 +240,11 @@ function initWebglScene(THREE) {
   }
 
   function render(time = 0) {
+    if (!reducedMotion && time - lastRenderedAt < frameDuration) {
+      frameId = window.requestAnimationFrame(render);
+      return;
+    }
+    lastRenderedAt = time;
     const elapsed = time * 0.00012;
     stage.rotation.y += (pointer.x * 0.18 - stage.rotation.y) * 0.018;
     stage.rotation.x += (-pointer.y * 0.12 - stage.rotation.x) * 0.018;

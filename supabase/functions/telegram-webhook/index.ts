@@ -46,26 +46,15 @@ function controlCenterMenu() {
 }
 
 async function sendControlCenter(supabase: any, botToken: string, chatId: number) {
-  const [
-    { count: totalRequests, error: totalError },
-    { count: newRequests, error: newError },
-    { count: activeRequests, error: activeError },
-    { count: completedRequests, error: completedError },
-    { count: totalReviews, error: reviewsError },
-    { data: settings, error: settingsError },
-  ] = await Promise.all([
-    supabase.from("project_requests").select("*", { count: "exact", head: true }),
-    supabase.from("project_requests").select("*", { count: "exact", head: true }).eq("status", "new"),
-    supabase.from("project_requests").select("*", { count: "exact", head: true }).eq("status", "answered"),
-    supabase.from("project_requests").select("*", { count: "exact", head: true }).eq("status", "completed"),
-    supabase.from("reviews").select("*", { count: "exact", head: true }),
-    supabase.from("site_settings").select("requests_enabled").eq("id", 1).maybeSingle(),
-  ]);
-  if (totalError || newError || activeError || completedError || reviewsError || settingsError) {
-    throw totalError || newError || activeError || completedError || reviewsError || settingsError;
-  }
-
-  const requestsEnabled = settings?.requests_enabled !== false;
+  const { data: result, error } = await supabase.rpc("get_control_center_stats");
+  const stats = Array.isArray(result) ? result[0] : result;
+  if (error || !stats) throw error || new Error("Could not load control center stats");
+  const totalRequests = Number(stats.total_requests || 0);
+  const newRequests = Number(stats.new_requests || 0);
+  const activeRequests = Number(stats.active_requests || 0);
+  const completedRequests = Number(stats.completed_requests || 0);
+  const totalReviews = Number(stats.total_reviews || 0);
+  const requestsEnabled = stats.requests_enabled !== false;
   await telegramRequest(botToken, "sendMessage", {
     chat_id: chatId,
     text: [
