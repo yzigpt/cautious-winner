@@ -104,21 +104,21 @@ async function sendGuarantorDealDetails(supabase: any, botToken: string, chatId:
 function controlCenterMenu() {
   return {
     inline_keyboard: [
-      [{ text: "\u{1F4CB} \u0412\u0441\u0435 \u0437\u0430\u044F\u0432\u043A\u0438", callback_data: "list:all:0" }],
+      [{ text: "📥 Входящие заявки", callback_data: "list:all:0" }],
       [
-        { text: "\u{1F195} \u041D\u043E\u0432\u044B\u0435", callback_data: "list:new:0" },
-        { text: "\u{2705} \u0412 \u0440\u0430\u0431\u043E\u0442\u0435", callback_data: "list:answered:0" },
+        { text: "🆕 Новые", callback_data: "list:new:0" },
+        { text: "⚡ В работе", callback_data: "list:answered:0" },
       ],
       [
-        { text: "\u{1F3C1} \u0417\u0430\u0432\u0435\u0440\u0448\u0451\u043D\u043D\u044B\u0435", callback_data: "list:completed:0" },
-        { text: "\u{1F6AB} \u041E\u0442\u043A\u043B\u043E\u043D\u0451\u043D\u043D\u044B\u0435", callback_data: "list:rejected:0" },
+        { text: "🏁 Завершённые", callback_data: "list:completed:0" },
+        { text: "🚫 Отклонённые", callback_data: "list:rejected:0" },
       ],
       [
-        { text: "\u{2B50} \u041E\u0442\u0437\u044B\u0432\u044B", callback_data: "reviews:list" },
-        { text: "\u{1F310} \u0421\u0430\u0439\u0442", callback_data: "site:menu" },
+        { text: "⭐ Отзывы", callback_data: "reviews:list" },
+        { text: "🌐 Сайт", callback_data: "site:menu" },
       ],
-      [{ text: "\u{1F6E1}\u{FE0F} \u0413\u0430\u0440\u0430\u043D\u0442", callback_data: "guarantor:menu" }],
-      [{ text: "\u{1F465} \u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u0438", callback_data: "users:list:0" }],
+      [{ text: "🛡️ Гарант", callback_data: "guarantor:menu" }, { text: "👥 Пользователи", callback_data: "users:list:0" }],
+      [{ text: "↻ Обновить сводку", callback_data: "dashboard:home" }],
     ],
   };
 }
@@ -136,16 +136,18 @@ async function sendControlCenter(supabase: any, botToken: string, chatId: number
   await telegramRequest(botToken, "sendMessage", {
     chat_id: chatId,
     text: [
-      "<b>\u{2726} FROG OXIDE</b>",
-      "<code>CONTROL CENTER  /  ONLINE</code>",
+      "<b>✦ FROG OXIDE</b>",
+      "<code>CONTROL CENTER · LIVE INBOX</code>",
       "",
-      `<b>\u{1F4E5} \u0412\u0441\u0435\u0433\u043E \u0437\u0430\u044F\u0432\u043E\u043A:</b> ${totalRequests || 0}`,
-      `<b>\u{1F195} \u041D\u043E\u0432\u044B\u0435:</b> ${newRequests || 0}    <b>\u{2705} \u0412 \u0440\u0430\u0431\u043E\u0442\u0435:</b> ${activeRequests || 0}`,
-      `<b>\u{1F3C1} \u0417\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E:</b> ${completedRequests || 0}    <b>\u{2B50} \u041E\u0442\u0437\u044B\u0432\u043E\u0432:</b> ${totalReviews || 0}`,
+      "━━━━━━━━━━━━",
+      `<b>📥 Всего заявок:</b> ${totalRequests || 0}`,
+      `<b>🆕 Новые:</b> ${newRequests || 0}    <b>⚡ В работе:</b> ${activeRequests || 0}`,
+      `<b>🏁 Завершено:</b> ${completedRequests || 0}    <b>⭐ Отзывов:</b> ${totalReviews || 0}`,
+      "━━━━━━━━━━━━",
       "",
-      `<b>\u{1F310} \u0421\u0430\u0439\u0442:</b> ${requestsEnabled ? "\u{1F7E2} \u043F\u0440\u0438\u0451\u043C \u0437\u0430\u044F\u0432\u043E\u043A \u043E\u0442\u043A\u0440\u044B\u0442" : "\u{1F7E0} \u043F\u0440\u0438\u0451\u043C \u0437\u0430\u044F\u0432\u043E\u043A \u043F\u0430\u0443\u0437\u0435"}`,
+      `<b>🌐 Сайт:</b> ${requestsEnabled ? "🟢 приём заявок открыт" : "🟠 приём заявок на паузе"}`,
       "",
-      "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0440\u0430\u0437\u0434\u0435\u043B \u043D\u0438\u0436\u0435.",
+      "Выберите раздел для работы ниже.",
     ].join("\n"),
     parse_mode: "HTML",
     reply_markup: controlCenterMenu(),
@@ -331,14 +333,17 @@ type ProjectRequest = {
 function requestMenu() {
   return {
     inline_keyboard: [
-      [{ text: "📋 Все заявки", callback_data: "list:all:0" }],
+      [{ text: "📥 Все заявки", callback_data: "list:all:0" }],
       [
         { text: "🆕 Новые", callback_data: "list:new:0" },
-        { text: "✅ Принятые", callback_data: "list:answered:0" },
+        { text: "⚡ В работе", callback_data: "list:answered:0" },
       ],
-      [{ text: "🚫 Отклонённые", callback_data: "list:rejected:0" }],
-      [{ text: "⭐ Управление отзывами", callback_data: "reviews:list" }],
-      [{ text: "🌐 Управление сайтом", callback_data: "site:menu" }],
+      [
+        { text: "🏁 Завершённые", callback_data: "list:completed:0" },
+        { text: "🚫 Отклонённые", callback_data: "list:rejected:0" },
+      ],
+      [{ text: "⭐ Отзывы", callback_data: "reviews:list" }, { text: "🌐 Сайт", callback_data: "site:menu" }],
+      [{ text: "◆ Control Center", callback_data: "dashboard:home" }],
     ],
   };
 }
@@ -390,37 +395,22 @@ function reviewMenu() {
 function requestActions(requestId: string) {
   return {
     inline_keyboard: [
-      [{ text: "👁 Открыть заявку", callback_data: `view:${requestId}` }],
       [
-        { text: "✅ Взять в работу", callback_data: `request:${requestId}:answered` },
+        { text: "⚡ Взять в работу", callback_data: `request:${requestId}:answered` },
         { text: "🚫 Отклонить", callback_data: `request:${requestId}:rejected` },
       ],
-      [{ text: "🗑 Удалить заявку", callback_data: `delete:${requestId}` }],
-      [{ text: "📋 К списку заявок", callback_data: "list:all:0" }],
+      [{ text: "🏁 Завершить", callback_data: `request:${requestId}:completed` }],
+      [{ text: "🗑 Удалить заявку", callback_data: `delete:${requestId}` }, { text: "📥 К списку", callback_data: "list:all:0" }],
     ],
   };
 }
 
 function requestMenuWithCompletion() {
-  const menu = requestMenu();
-  menu.inline_keyboard.splice(2, 0, [
-    { text: "\u{1F3C1} \u0417\u0430\u0432\u0435\u0440\u0448\u0451\u043D\u043D\u044B\u0435", callback_data: "list:completed:0" },
-  ]);
-  menu.inline_keyboard.push([
-    { text: "\u{25C6} Control Center", callback_data: "dashboard:home" },
-  ]);
-  return menu;
+  return requestMenu();
 }
 
 function requestActionsWithCompletion(requestId: string) {
-  const actions = requestActions(requestId);
-  actions.inline_keyboard.splice(2, 0, [
-    { text: "\u{1F3C1} \u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044C", callback_data: `request:${requestId}:completed` },
-  ]);
-  actions.inline_keyboard.push([
-    { text: "\u{25C6} Control Center", callback_data: "dashboard:home" },
-  ]);
-  return actions;
+  return requestActions(requestId);
 }
 
 function deleteConfirmation(requestId: string) {
@@ -560,11 +550,14 @@ async function sendRequestDetails(
     timeZone: "Asia/Yekaterinburg",
   }).format(new Date(data.updated_at || data.created_at));
   const message = [
-    `<b>👁 Заявка №${data.request_number}</b>`,
+    `<b>✦ ЗАЯВКА №${data.request_number}</b>`,
+    "<code>FROG OXIDE · PROJECT INQUIRY</code>",
     "",
+    "━━━━━━━━━━━━",
     `<b>👤 Клиент:</b> ${escapeHtml(data.name)}`,
     `<b>📞 Контакт:</b> ${escapeHtml(data.contact_details)}`,
     `<b>💬 Сообщение:</b>\n${escapeHtml(data.text)}`,
+    "━━━━━━━━━━━━",
     `<b>🏷 Статус:</b> ${statusLabel(data.status)}`,
     `<b>🕒 Получена:</b> ${createdAt}`,
     `<b>🔄 Обновлена:</b> ${updatedAt}`,
