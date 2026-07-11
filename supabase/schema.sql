@@ -339,6 +339,16 @@ create table if not exists public.crypto_profile_reputation (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.crypto_deal_ratings (
+  deal_id uuid not null references public.crypto_deals(id) on delete cascade,
+  rater_chat_id bigint not null,
+  target_chat_id bigint not null,
+  value smallint not null check (value in (-1, 1)),
+  created_at timestamptz not null default timezone('utc', now()),
+  primary key (deal_id, rater_chat_id),
+  check (rater_chat_id <> target_chat_id)
+);
+
 drop trigger if exists crypto_guarantor_profiles_touch_updated_at on public.crypto_guarantor_profiles;
 create trigger crypto_guarantor_profiles_touch_updated_at before update on public.crypto_guarantor_profiles
 for each row execute function public.touch_updated_at();
@@ -388,15 +398,59 @@ begin
 end;
 $$;
 
+create or replace function public.submit_crypto_deal_rating(
+  p_deal_id uuid,
+  p_rater_chat_id bigint,
+  p_target_chat_id bigint,
+  p_value smallint
+)
+returns boolean
+language plpgsql security definer set search_path = public as $$
+declare
+  inserted_count integer;
+begin
+  if p_value not in (-1, 1) then
+    raise exception 'Invalid rating value';
+  end if;
+  if not exists (
+    select 1 from public.crypto_deals
+    where id = p_deal_id
+      and status = 'completed'
+      and ((buyer_chat_id = p_rater_chat_id and seller_chat_id = p_target_chat_id)
+        or (seller_chat_id = p_rater_chat_id and buyer_chat_id = p_target_chat_id))
+  ) then
+    return false;
+  end if;
+
+  insert into public.crypto_deal_ratings (deal_id, rater_chat_id, target_chat_id, value)
+  values (p_deal_id, p_rater_chat_id, p_target_chat_id, p_value)
+  on conflict (deal_id, rater_chat_id) do nothing;
+  get diagnostics inserted_count = row_count;
+  if inserted_count = 0 then
+    return false;
+  end if;
+
+  insert into public.crypto_profile_reputation (chat_id, positive_count, negative_count)
+  values (p_target_chat_id, case when p_value = 1 then 1 else 0 end, case when p_value = -1 then 1 else 0 end)
+  on conflict (chat_id) do update set
+    positive_count = public.crypto_profile_reputation.positive_count + case when p_value = 1 then 1 else 0 end,
+    negative_count = public.crypto_profile_reputation.negative_count + case when p_value = -1 then 1 else 0 end;
+  return true;
+end;
+$$;
+
 alter table public.crypto_deals enable row level security;
 alter table public.crypto_bot_states enable row level security;
 alter table public.crypto_guarantor_profiles enable row level security;
 alter table public.crypto_profile_reputation enable row level security;
-revoke all on public.crypto_deals, public.crypto_bot_states, public.crypto_guarantor_profiles, public.crypto_profile_reputation from anon, authenticated;
+alter table public.crypto_deal_ratings enable row level security;
+revoke all on public.crypto_deals, public.crypto_bot_states, public.crypto_guarantor_profiles, public.crypto_profile_reputation, public.crypto_deal_ratings from anon, authenticated;
 revoke all on function public.claim_crypto_deal_payout(uuid, bigint) from public, anon, authenticated;
 grant execute on function public.claim_crypto_deal_payout(uuid, bigint) to service_role;
 revoke all on function public.claim_crypto_deal_refund(uuid) from public, anon, authenticated;
 grant execute on function public.claim_crypto_deal_refund(uuid) to service_role;
+revoke all on function public.submit_crypto_deal_rating(uuid, bigint, bigint, smallint) from public, anon, authenticated;
+grant execute on function public.submit_crypto_deal_rating(uuid, bigint, bigint, smallint) to service_role;
 
 do $$
 begin

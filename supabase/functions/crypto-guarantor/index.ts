@@ -152,7 +152,7 @@ async function sendProfile(supabase: any, botToken: string, chatId: number) {
   const [{ data: profile, error: profileError }, { data: reputation, error: reputationError }, { data: deals, error: dealsError }] = await Promise.all([
     supabase.from("crypto_guarantor_profiles").select("telegram_username, created_at").eq("chat_id", chatId).maybeSingle(),
     supabase.from("crypto_profile_reputation").select("positive_count, negative_count").eq("chat_id", chatId).maybeSingle(),
-    supabase.from("crypto_deals").select("amount_usdt").or(`buyer_chat_id.eq.${chatId},seller_chat_id.eq.${chatId}`),
+    supabase.from("crypto_deals").select("amount_usdt").eq("status", "completed").or(`buyer_chat_id.eq.${chatId},seller_chat_id.eq.${chatId}`),
   ]);
   if (profileError || reputationError || dealsError) throw profileError || reputationError || dealsError;
   const amount = (deals || []).reduce((sum: number, deal: any) => sum + Number(deal.amount_usdt || 0), 0);
@@ -181,6 +181,13 @@ async function sendProfile(supabase: any, botToken: string, chatId: number) {
     ].join("\n"),
     reply_markup: { inline_keyboard: [[{ text: "Мои сделки", callback_data: "menu:deals" }], [{ text: "Главное меню", callback_data: "menu:home" }]] },
   });
+}
+
+function ratingMenu(dealId: string, targetChatId: number) {
+  return { inline_keyboard: [[
+    { text: "👍 Положительно", callback_data: `rate:${dealId}:${targetChatId}:1` },
+    { text: "👎 Отрицательно", callback_data: `rate:${dealId}:${targetChatId}:-1` },
+  ]] };
 }
 
 async function sendMyDeals(supabase: any, botToken: string, chatId: number) {
@@ -290,6 +297,8 @@ async function confirmPayout(supabase: any, botToken: string, cryptoToken: strin
     await Promise.all([
       telegram(botToken, "sendMessage", { chat_id: chatId, text: `Сделка #${deal.deal_number} завершена. Выплата продавцу отправлена.` }),
       telegram(botToken, "sendMessage", { chat_id: deal.seller_chat_id, text: `Сделка #${deal.deal_number} завершена. Вам отправлено ${deal.seller_payout_usdt} USDT.` }),
+      telegram(botToken, "sendMessage", { chat_id: chatId, text: "Оцените взаимодействие с продавцом.", reply_markup: ratingMenu(dealId, deal.seller_chat_id) }),
+      telegram(botToken, "sendMessage", { chat_id: deal.seller_chat_id, text: "Оцените взаимодействие с покупателем.", reply_markup: ratingMenu(dealId, chatId) }),
     ]);
   } catch (payoutError) {
     await supabase.from("crypto_deals").update({ status: "paid", last_error: String(payoutError).slice(0, 500) }).eq("id", dealId);
@@ -394,6 +403,19 @@ Deno.serve(async (request) => {
     }
     if (callback?.data?.startsWith("deal:view:")) {
       await sendDealDetails(supabase, botToken, chatId, callback.data.slice(10));
+      return json({ ok: true });
+    }
+    const ratingMatch = String(callback?.data || "").match(/^rate:([0-9a-f-]{36}):(\d+):(-?1)$/i);
+    if (callback && ratingMatch) {
+      const [, dealId, targetId, value] = ratingMatch;
+      const { data: accepted, error } = await supabase.rpc("submit_crypto_deal_rating", {
+        p_deal_id: dealId,
+        p_rater_chat_id: chatId,
+        p_target_chat_id: Number(targetId),
+        p_value: Number(value),
+      });
+      if (error) throw error;
+      await telegram(botToken, "answerCallbackQuery", { callback_query_id: callback.id, text: accepted ? "Оценка сохранена" : "Оценка уже поставлена или сделка не завершена", show_alert: !accepted });
       return json({ ok: true });
     }
     if (callback?.data?.startsWith("new:")) {
