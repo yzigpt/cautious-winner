@@ -100,8 +100,11 @@ function startMenu() {
     { text: "✦ Создать сделку", callback_data: "menu:new" },
   ], [
     { text: "▣ Мои сделки", callback_data: "menu:deals" },
+    { text: "👤 Профиль", callback_data: "menu:profile" },
+  ], [
     { text: "◈ Условия сделки", callback_data: "menu:help" },
-  ], [{ text: "👤 Профиль", callback_data: "menu:profile" }]] };
+    { text: "✉️ Поддержка", callback_data: "menu:support" },
+  ]] };
 }
 
 function roleMenu() {
@@ -109,6 +112,10 @@ function roleMenu() {
     { text: "🛒 Я покупатель", callback_data: "new:buyer" },
     { text: "💼 Я продавец", callback_data: "new:seller" },
   ], [{ text: "Назад", callback_data: "menu:home" }]] };
+}
+
+function cancelDraftMenu() {
+  return { inline_keyboard: [[{ text: "✕ Отменить создание", callback_data: "menu:cancel-draft" }]] };
 }
 
 function statusLabel(status: string) {
@@ -125,7 +132,16 @@ function statusLabel(status: string) {
   return labels[status] || status;
 }
 
-async function sendHome(botToken: string, chatId: number) {
+async function sendHome(supabase: any, botToken: string, chatId: number) {
+  const { data, error } = await supabase.from("crypto_deals")
+    .select("status, amount_usdt")
+    .or(`buyer_chat_id.eq.${chatId},seller_chat_id.eq.${chatId}`)
+    .is("admin_archived_at", null);
+  if (error) throw error;
+  const deals = data || [];
+  const active = deals.filter((deal: any) => ["awaiting_payment", "paid", "awaiting_buyer_confirmation", "disputed"].includes(deal.status)).length;
+  const completed = deals.filter((deal: any) => deal.status === "completed");
+  const completedVolume = completed.reduce((sum: number, deal: any) => sum + Number(deal.amount_usdt || 0), 0);
   await telegram(botToken, "sendMessage", {
     chat_id: chatId,
     parse_mode: "HTML",
@@ -134,12 +150,24 @@ async function sendHome(botToken: string, chatId: number) {
       "<code>USDT SAFE DEALS · 3% SERVICE FEE</code>",
       "",
       "━━━━━━━━━━━━",
+      `▣ Активные сделки: <b>${active}</b>`,
+      `✦ Завершено: <b>${completed.length}</b>`,
+      `💵 Объём завершённых: <b>${completedVolume.toFixed(2).replace(/\.00$/, "")} USDT</b>`,
+      "━━━━━━━━━━━━",
       "Безопасные сделки между покупателем и продавцом.",
       "Комиссия <b>3%</b> удерживается из выплаты продавцу.",
       "Деньги отправляются только после подтверждения покупателя.",
-      "━━━━━━━━━━━━",
     ].join("\n"),
     reply_markup: startMenu(),
+  });
+}
+
+async function sendSupport(botToken: string, chatId: number) {
+  await telegram(botToken, "sendMessage", {
+    chat_id: chatId,
+    parse_mode: "HTML",
+    text: "<b>✉️ ПОДДЕРЖКА</b>\n<code>FROG GARANT / HELP DESK</code>\n\n━━━━━━━━━━━━\nЕсли возник вопрос по условиям, оплате или спору, напишите администратору. При открытом споре выплата автоматически остановлена.",
+    reply_markup: adminContactMenu(),
   });
 }
 
@@ -214,10 +242,11 @@ async function sendMyDeals(supabase: any, botToken: string, chatId: number) {
     const counterpartId = isBuyer ? Number(deal.seller_chat_id) : Number(deal.buyer_chat_id);
     const counterpart = names.get(counterpartId) || "ожидает подключения";
     return `#${deal.deal_number} · <b>${deal.amount_usdt} USDT</b>\n${isBuyer ? "Продавец" : "Покупатель"}: ${escapeHtml(counterpart)}\n${statusLabel(deal.status)}`;
-  }).join("\n\n");
+  }).join("\n━━━━━━━━━━━━\n");
   const buttons = deals.map((deal: any) => [{ text: `Открыть сделку #${deal.deal_number}`, callback_data: `deal:view:${deal.id}` }]);
   buttons.push([{ text: "Главное меню", callback_data: "menu:home" }]);
-  await telegram(botToken, "sendMessage", { chat_id: chatId, text: `<b>МОИ СДЕЛКИ</b>\n<code>LIVE STATUS · USDT</code>\n\n${summary}`, parse_mode: "HTML", reply_markup: { inline_keyboard: buttons } });
+  const active = deals.filter((deal: any) => !["completed", "refunded", "cancelled"].includes(deal.status)).length;
+  await telegram(botToken, "sendMessage", { chat_id: chatId, text: `<b>▣ МОИ СДЕЛКИ</b>\n<code>LIVE STATUS · USDT</code>\nАктивных: <b>${active}</b> · Всего: <b>${deals.length}</b>\n━━━━━━━━━━━━\n${summary}`, parse_mode: "HTML", reply_markup: { inline_keyboard: buttons } });
 }
 
 async function sendDealDetails(supabase: any, botToken: string, chatId: number, dealId: string) {
@@ -397,19 +426,32 @@ Deno.serve(async (request) => {
     if (text.startsWith("/start")) {
       const dealId = text.split(/\s+/)[1]?.replace("deal_", "");
       if (dealId) await joinDeal(supabase, botToken, chatId, dealId);
-      else await sendHome(botToken, chatId);
+      else await sendHome(supabase, botToken, chatId);
       return json({ ok: true });
     }
     if (text === "/deals") {
       await sendMyDeals(supabase, botToken, chatId);
       return json({ ok: true });
     }
+    if (text === "/profile") {
+      await sendProfile(supabase, botToken, chatId);
+      return json({ ok: true });
+    }
+    if (text === "/support") {
+      await sendSupport(botToken, chatId);
+      return json({ ok: true });
+    }
+    if (text === "/help") {
+      await telegram(botToken, "sendMessage", { chat_id: chatId, text: "Команды:\n/deals — мои сделки\n/profile — профиль\n/support — поддержка" });
+      return json({ ok: true });
+    }
     if (callback?.data === "menu:home") {
-      await sendHome(botToken, chatId);
+      await sendHome(supabase, botToken, chatId);
       return json({ ok: true });
     }
     if (callback?.data === "menu:new") {
-      await telegram(botToken, "sendMessage", { chat_id: chatId, text: "Кем вы являетесь в этой сделке?", reply_markup: roleMenu() });
+      await clearState(supabase, chatId);
+      await telegram(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: "<b>✦ НОВАЯ СДЕЛКА</b>\n<code>ШАГ 1 ИЗ 3 · ВЫБОР РОЛИ</code>\n\nКем вы являетесь в этой сделке?", reply_markup: roleMenu() });
       return json({ ok: true });
     }
     if (callback?.data === "menu:deals") {
@@ -420,8 +462,18 @@ Deno.serve(async (request) => {
       await sendProfile(supabase, botToken, chatId);
       return json({ ok: true });
     }
+    if (callback?.data === "menu:support") {
+      await sendSupport(botToken, chatId);
+      return json({ ok: true });
+    }
+    if (callback?.data === "menu:cancel-draft") {
+      await clearState(supabase, chatId);
+      await telegram(botToken, "sendMessage", { chat_id: chatId, text: "Черновик сделки отменён." });
+      await sendHome(supabase, botToken, chatId);
+      return json({ ok: true });
+    }
     if (callback?.data === "menu:help") {
-      await telegram(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: "<b>◈ УСЛОВИЯ СДЕЛКИ</b>\n<code>ПРОЗРАЧНО · БЕЗОПАСНО · ПОНЯТНО</code>\n\n━━━━━━━━━━━━\n1. Создайте сделку, укажите сумму и условия.\n2. Отправьте ссылку второй стороне.\n3. Покупатель оплачивает USDT.\n4. Продавец отмечает выполнение условий.\n5. Покупатель подтверждает результат, после чего отправляется выплата.\n━━━━━━━━━━━━\n\n⚑ При споре выплата останавливается до решения администратора." });
+      await telegram(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: "<b>◈ УСЛОВИЯ СДЕЛКИ</b>\n<code>ПРОЗРАЧНО · БЕЗОПАСНО · ПОНЯТНО</code>\n\n━━━━━━━━━━━━\n1. Создайте сделку, укажите сумму и условия.\n2. Отправьте ссылку второй стороне.\n3. Покупатель оплачивает USDT.\n4. Продавец отмечает выполнение условий.\n5. Покупатель подтверждает результат, после чего отправляется выплата.\n━━━━━━━━━━━━\n\n⚑ При споре выплата останавливается до решения администратора.", reply_markup: { inline_keyboard: [[{ text: "✦ Создать сделку", callback_data: "menu:new" }], [{ text: "Главное меню", callback_data: "menu:home" }]] } });
       return json({ ok: true });
     }
     if (callback?.data?.startsWith("deal:view:")) {
@@ -444,7 +496,7 @@ Deno.serve(async (request) => {
     if (callback?.data?.startsWith("new:")) {
       const role = callback.data.split(":")[1];
       await setState(supabase, chatId, "amount", { role });
-      await telegram(botToken, "sendMessage", { chat_id: chatId, text: "Введите сумму сделки в USDT, например: 100" });
+      await telegram(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: "<b>✦ НОВАЯ СДЕЛКА</b>\n<code>ШАГ 2 ИЗ 3 · СУММА</code>\n\nВведите сумму сделки в USDT, например: <b>100</b>", reply_markup: cancelDraftMenu() });
       return json({ ok: true });
     }
     if (callback?.data?.startsWith("pay:")) await createInvoice(supabase, botToken, cryptoToken, chatId, callback.data.slice(4));
@@ -487,7 +539,7 @@ Deno.serve(async (request) => {
         const payout = amount - fee;
         if (payout <= 0n) return telegram(botToken, "sendMessage", { chat_id: chatId, text: "Сумма слишком мала для создания сделки." });
         await setState(supabase, chatId, "terms", { role: state.payload.role, amount_usdt: formatUsdt(amount), fee_usdt: formatUsdt(fee), seller_payout_usdt: formatUsdt(payout) });
-        return telegram(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: termsPrompt() });
+        return telegram(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: `${termsPrompt()}\n\n<code>ШАГ 3 ИЗ 3 · ФИКСАЦИЯ УСЛОВИЙ</code>`, reply_markup: cancelDraftMenu() });
       }
       if (state?.step !== "terms") return json({ ok: true });
       const terms = text.trim().replace(/\s+/g, " ").slice(0, 2000);
