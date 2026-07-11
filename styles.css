@@ -4038,7 +4038,7 @@ body::after {
 }
 
 .hero-topline {
-  margin-bottom: clamp(34px, 5vw, 62px);
+  margin-bottom: clamp(18px, 2.5vw, 34px);
 }
 
 .hero-brand,
