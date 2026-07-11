@@ -3933,6 +3933,13 @@ body::before {
   margin-top: 4px;
 }
 
+/* Prevent browser image-search overlays from appearing over site photography. */
+.page--site img {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 .project-card__visual--studio::after {
   content: "";
   position: absolute;
