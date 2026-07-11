@@ -3726,6 +3726,43 @@ body::before {
   margin: 26px 0 0;
 }
 
+.portfolio-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 26px;
+}
+
+.portfolio-status,
+.project-card__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid rgba(169, 232, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(5, 19, 35, 0.62);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.portfolio-status::before,
+.project-card__status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.portfolio-status--development,
+.project-card__status--development { color: #80e7ca; }
+.portfolio-status--soon { color: #f6d37a; }
+.portfolio-status--done { color: #7fbcff; }
+
 .portfolio-hero__meta {
   display: grid;
   gap: 9px;
@@ -3929,6 +3966,13 @@ body::before {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.project-card__status {
+  position: absolute;
+  z-index: 1;
+  top: 18px;
+  right: 18px;
 }
 
 .project-card__content {
