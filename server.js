@@ -917,6 +917,7 @@ const server = http.createServer(async (req, res) => {
     "/site-api.js": "site-api.js",
     "/scene.js": "scene.js",
     "/assets/developer-studio-hero.png": "assets/developer-studio-hero.png",
+    "/assets/frog-garant-avatar.png": "assets/frog-garant-avatar.png",
     "/auth.js": "auth.js",
     "/supabase-client.js": "supabase-client.js",
     "/supabase-config.js": "supabase-config.js",

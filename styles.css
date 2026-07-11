@@ -3868,6 +3868,31 @@ body::before {
   border-bottom: 0;
 }
 
+.guarantor-project {
+  border-color: rgba(125, 231, 181, 0.2);
+  background:
+    radial-gradient(circle at 88% 10%, rgba(231, 185, 80, 0.1), transparent 26%),
+    linear-gradient(135deg, rgba(5, 25, 30, 0.98), rgba(5, 15, 28, 0.96));
+}
+
+.guarantor-project__visual { background: #03131a; }
+
+.guarantor-project__visual::after {
+  background:
+    linear-gradient(90deg, rgba(2, 14, 23, 0.02), rgba(3, 18, 28, 0.62)),
+    linear-gradient(0deg, rgba(2, 14, 23, 0.38), transparent 44%);
+}
+
+.guarantor-project__visual img {
+  object-position: center;
+  filter: saturate(0.92) contrast(1.05);
+}
+
+.guarantor-project__link {
+  justify-self: start;
+  margin-top: 4px;
+}
+
 .project-card__visual--studio::after {
   content: "";
   position: absolute;
