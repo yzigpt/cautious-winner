@@ -31,8 +31,8 @@ if (canvas && host && !reducedMotion && !saveData) {
         stars.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          speedX: (Math.random() - 0.5) * (lowPower ? 0.1 : 0.18),
-          speedY: (Math.random() - 0.5) * (lowPower ? 0.08 : 0.14),
+          speedX: (Math.random() - 0.5) * (lowPower ? 0.18 : 0.32),
+          speedY: (Math.random() - 0.5) * (lowPower ? 0.14 : 0.25),
           radius: Math.random() * 1.15 + 0.45,
           shimmer: Math.random() * Math.PI * 2,
         });
