@@ -195,6 +195,7 @@ async function sendMyDeals(supabase: any, botToken: string, chatId: number) {
   const { data, error } = await supabase.from("crypto_deals")
     .select("id, deal_number, status, amount_usdt, buyer_chat_id, seller_chat_id, created_at")
     .or(`buyer_chat_id.eq.${chatId},seller_chat_id.eq.${chatId}`)
+    .is("admin_archived_at", null)
     .order("created_at", { ascending: false })
     .limit(12);
   if (error) throw error;
@@ -202,18 +203,30 @@ async function sendMyDeals(supabase: any, botToken: string, chatId: number) {
   if (!deals.length) {
     return telegram(botToken, "sendMessage", { chat_id: chatId, text: "У вас пока нет сделок.", reply_markup: { inline_keyboard: [[{ text: "Создать сделку", callback_data: "menu:new" }]] } });
   }
-  const buttons = deals.map((deal: any) => [{
-    text: `#${deal.deal_number} · ${deal.amount_usdt} USDT · ${statusLabel(deal.status)}`,
-    callback_data: `deal:view:${deal.id}`,
-  }]);
+  const participantIds = [...new Set(deals.flatMap((deal: any) => [deal.buyer_chat_id, deal.seller_chat_id]).filter(Boolean))];
+  const { data: profiles, error: profilesError } = await supabase.from("crypto_guarantor_profiles").select("chat_id, telegram_username").in("chat_id", participantIds);
+  if (profilesError) throw profilesError;
+  const names = new Map((profiles || []).map((profile: any) => [Number(profile.chat_id), String(profile.telegram_username || "Без имени")]));
+  const summary = deals.map((deal: any) => {
+    const isBuyer = Number(deal.buyer_chat_id) === chatId;
+    const counterpartId = isBuyer ? Number(deal.seller_chat_id) : Number(deal.buyer_chat_id);
+    const counterpart = names.get(counterpartId) || "ожидает подключения";
+    return `#${deal.deal_number} · <b>${deal.amount_usdt} USDT</b>\n${isBuyer ? "Продавец" : "Покупатель"}: ${escapeHtml(counterpart)}\n${statusLabel(deal.status)}`;
+  }).join("\n\n");
+  const buttons = deals.map((deal: any) => [{ text: `Открыть сделку #${deal.deal_number}`, callback_data: `deal:view:${deal.id}` }]);
   buttons.push([{ text: "Главное меню", callback_data: "menu:home" }]);
-  await telegram(botToken, "sendMessage", { chat_id: chatId, text: "<b>Мои сделки</b>\nВыберите сделку, чтобы посмотреть статус и доступные действия.", parse_mode: "HTML", reply_markup: { inline_keyboard: buttons } });
+  await telegram(botToken, "sendMessage", { chat_id: chatId, text: `<b>МОИ СДЕЛКИ</b>\n<code>LIVE STATUS · USDT</code>\n\n${summary}`, parse_mode: "HTML", reply_markup: { inline_keyboard: buttons } });
 }
 
 async function sendDealDetails(supabase: any, botToken: string, chatId: number, dealId: string) {
-  const { data: deal, error } = await supabase.from("crypto_deals").select("*").eq("id", dealId).maybeSingle();
+  const { data: deal, error } = await supabase.from("crypto_deals").select("*").eq("id", dealId).is("admin_archived_at", null).maybeSingle();
   if (error || !deal || (deal.buyer_chat_id !== chatId && deal.seller_chat_id !== chatId)) return;
   const isBuyer = deal.buyer_chat_id === chatId;
+  const { data: profiles, error: profilesError } = await supabase.from("crypto_guarantor_profiles").select("chat_id, telegram_username").in("chat_id", [deal.buyer_chat_id, deal.seller_chat_id].filter(Boolean));
+  if (profilesError) throw profilesError;
+  const names = new Map((profiles || []).map((profile: any) => [Number(profile.chat_id), String(profile.telegram_username || "Без имени")]));
+  const buyerName = names.get(Number(deal.buyer_chat_id)) || "ожидает подключения";
+  const sellerName = names.get(Number(deal.seller_chat_id)) || "ожидает подключения";
   const actions: any[] = [];
   if (deal.status === "awaiting_payment" && isBuyer) actions.push([{ text: "Оплатить USDT", callback_data: `pay:${deal.id}` }]);
   if (deal.status === "paid" && !isBuyer) actions.push([{ text: "Заказ выполнен", callback_data: `complete:${deal.id}` }]);
@@ -230,7 +243,7 @@ async function sendDealDetails(supabase: any, botToken: string, chatId: number, 
   await telegram(botToken, "sendMessage", {
     chat_id: chatId,
     parse_mode: "HTML",
-    text: `${dealText(deal)}\n\n${dealTermsText(deal)}\n\nСтатус: <b>${statusLabel(deal.status)}</b>\nВаша роль: <b>${isBuyer ? "покупатель" : "продавец"}</b>\n\n<i>${nextStep}</i>`,
+    text: `${dealText(deal)}\n\n👤 Покупатель: <b>${escapeHtml(buyerName)}</b>\n👤 Продавец: <b>${escapeHtml(sellerName)}</b>\n\n${dealTermsText(deal)}\n\nСтатус: <b>${statusLabel(deal.status)}</b>\nВаша роль: <b>${isBuyer ? "покупатель" : "продавец"}</b>\n\n<i>${nextStep}</i>`,
     reply_markup: { inline_keyboard: actions },
   });
 }

@@ -54,7 +54,7 @@ function guarantorMenu() {
 }
 
 async function sendGuarantorPanel(supabase: any, botToken: string, chatId: number) {
-  const { data, error } = await supabase.from("crypto_deals").select("status");
+  const { data, error } = await supabase.from("crypto_deals").select("status").is("admin_archived_at", null);
   if (error) throw error;
   const deals = data || [];
   const active = deals.filter((deal: any) => ["paid", "awaiting_buyer_confirmation", "disputed"].includes(deal.status)).length;
@@ -62,27 +62,38 @@ async function sendGuarantorPanel(supabase: any, botToken: string, chatId: numbe
 }
 
 async function sendGuarantorDeals(supabase: any, botToken: string, chatId: number, offset = 0) {
-  const { data, error, count } = await supabase.from("crypto_deals").select("id, deal_number, amount_usdt, status, created_at", { count: "exact" }).is("admin_archived_at", null).order("created_at", { ascending: false }).range(offset, offset + 9);
+  const { data, error, count } = await supabase.from("crypto_deals").select("id, deal_number, amount_usdt, status, buyer_chat_id, seller_chat_id, created_at", { count: "exact" }).is("admin_archived_at", null).order("created_at", { ascending: false }).range(offset, offset + 9);
   if (error) throw error;
-  const buttons: any[] = (data || []).map((deal: any) => [{ text: `#${deal.deal_number} · ${deal.amount_usdt} USDT · ${cryptoDealStatusLabel(deal.status)}`, callback_data: `guarantor:view:${deal.id}` }]);
+  const deals = data || [];
+  const participantIds = [...new Set(deals.flatMap((deal: any) => [deal.buyer_chat_id, deal.seller_chat_id]).filter(Boolean))];
+  const { data: profiles, error: profilesError } = await supabase.from("crypto_guarantor_profiles").select("chat_id, telegram_username").in("chat_id", participantIds);
+  if (profilesError) throw profilesError;
+  const names = new Map((profiles || []).map((profile: any) => [Number(profile.chat_id), String(profile.telegram_username || "Без имени")]));
+  const summary = deals.map((deal: any) => `#${deal.deal_number} · <b>${deal.amount_usdt} USDT</b>\nПокупатель: ${escapeHtml(names.get(Number(deal.buyer_chat_id)) || "не подключён")}\nПродавец: ${escapeHtml(names.get(Number(deal.seller_chat_id)) || "не подключён")}\n${cryptoDealStatusLabel(deal.status)}`).join("\n\n");
+  const buttons: any[] = deals.map((deal: any) => [{ text: `Открыть сделку #${deal.deal_number}`, callback_data: `guarantor:view:${deal.id}` }]);
   const nav: any[] = [];
   if (offset > 0) nav.push({ text: "Назад", callback_data: `guarantor:list:${Math.max(0, offset - 10)}` });
   if (offset + 10 < Number(count || 0)) nav.push({ text: "Вперёд", callback_data: `guarantor:list:${offset + 10}` });
   if (nav.length) buttons.push(nav);
   buttons.push([{ text: "К панели гаранта", callback_data: "guarantor:menu" }]);
-  await telegramRequest(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: `<b>Все сделки</b>\nВсего: ${count || 0}`, reply_markup: { inline_keyboard: buttons } });
+  await telegramRequest(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: `<b>ГАРАНТ · ВСЕ СДЕЛКИ</b>\n<code>CONTROL / USDT / LIVE</code>\n\n${summary || "Сделок пока нет."}`, reply_markup: { inline_keyboard: buttons } });
 }
 
 async function sendGuarantorDealDetails(supabase: any, botToken: string, chatId: number, dealId: string) {
   const { data: deal, error } = await supabase.from("crypto_deals").select("*").eq("id", dealId).maybeSingle();
   if (error || !deal) throw error || new Error("Crypto deal not found");
+  const { data: profiles, error: profilesError } = await supabase.from("crypto_guarantor_profiles").select("chat_id, telegram_username").in("chat_id", [deal.buyer_chat_id, deal.seller_chat_id].filter(Boolean));
+  if (profilesError) throw profilesError;
+  const names = new Map((profiles || []).map((profile: any) => [Number(profile.chat_id), String(profile.telegram_username || "Без имени")]));
+  const buyerName = names.get(Number(deal.buyer_chat_id)) || "не подключён";
+  const sellerName = names.get(Number(deal.seller_chat_id)) || "не подключён";
   const canRefund = ["paid", "awaiting_buyer_confirmation", "disputed"].includes(deal.status);
   const actions: any[] = [];
   if (canRefund) actions.push([{ text: "Вернуть деньги покупателю", callback_data: `guarantor:refund:${deal.id}` }]);
   if (!["completed", "refunded", "refund_processing", "cancelled", "disputed"].includes(deal.status)) actions.push([{ text: "Остановить сделку", callback_data: `guarantor:stop:${deal.id}` }]);
   if (!["payout_processing", "refund_processing"].includes(deal.status)) actions.push([{ text: "Удалить из списка", callback_data: `guarantor:delete:${deal.id}` }]);
   actions.push([{ text: "Все сделки", callback_data: "guarantor:list:0" }]);
-  await telegramRequest(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: [`<b>Сделка #${deal.deal_number}</b>`, `Сумма: <b>${deal.amount_usdt} USDT</b>`, `Комиссия: ${deal.fee_usdt} USDT`, `Выплата продавцу: ${deal.seller_payout_usdt} USDT`, `Статус: <b>${cryptoDealStatusLabel(deal.status)}</b>`, `Покупатель: <code>${deal.buyer_chat_id || "не подключён"}</code>`, `Продавец: <code>${deal.seller_chat_id || "не подключён"}</code>`, "", `<b>Условия</b>\n${escapeHtml(String(deal.terms || "Не указаны"))}`].join("\n"), reply_markup: { inline_keyboard: actions } });
+  await telegramRequest(botToken, "sendMessage", { chat_id: chatId, parse_mode: "HTML", text: [`<b>СДЕЛКА #${deal.deal_number}</b>`, `<code>GUARANTOR / USDT</code>`, "", `Сумма: <b>${deal.amount_usdt} USDT</b>`, `Комиссия: ${deal.fee_usdt} USDT`, `Выплата продавцу: ${deal.seller_payout_usdt} USDT`, `Статус: <b>${cryptoDealStatusLabel(deal.status)}</b>`, "", `Покупатель: <b>${escapeHtml(buyerName)}</b> · <code>${deal.buyer_chat_id || "не подключён"}</code>`, `Продавец: <b>${escapeHtml(sellerName)}</b> · <code>${deal.seller_chat_id || "не подключён"}</code>`, "", `<b>Условия</b>\n${escapeHtml(String(deal.terms || "Не указаны"))}`].join("\n"), reply_markup: { inline_keyboard: actions } });
 }
 
 function controlCenterMenu() {
