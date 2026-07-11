@@ -148,6 +148,26 @@ async function confirmPayout(supabase: any, botToken: string, cryptoToken: strin
   }
 }
 
+async function markOrderCompleted(supabase: any, botToken: string, chatId: number, dealId: string) {
+  const { data: deal, error } = await supabase.from("crypto_deals")
+    .update({ status: "awaiting_buyer_confirmation" })
+    .eq("id", dealId)
+    .eq("seller_chat_id", chatId)
+    .eq("status", "paid")
+    .select("*")
+    .maybeSingle();
+  if (error) throw error;
+  if (!deal) return telegram(botToken, "sendMessage", { chat_id: chatId, text: "Подтверждение недоступно: сделка ещё не оплачена или уже обработана." });
+  await Promise.all([
+    telegram(botToken, "sendMessage", { chat_id: chatId, text: `Вы отметили заказ по сделке #${deal.deal_number} как выполненный. Ожидайте подтверждения покупателя.` }),
+    telegram(botToken, "sendMessage", {
+      chat_id: deal.buyer_chat_id,
+      text: `Продавец отметил заказ по сделке #${deal.deal_number} как выполненный. Проверьте результат и подтвердите выплату, либо откройте спор.`,
+      reply_markup: { inline_keyboard: [[{ text: "Подтвердить выполнение", callback_data: `confirm:${deal.id}` }, { text: "Открыть спор", callback_data: `dispute:${deal.id}` }]] },
+    }),
+  ]);
+}
+
 async function verifyCryptoSignature(token: string, body: string, received: string | null) {
   if (!received) return false;
   const tokenHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
@@ -178,8 +198,8 @@ Deno.serve(async (request) => {
         .eq("crypto_invoice_id", invoice.invoice_id).eq("status", "awaiting_payment").select("*").maybeSingle();
       if (error) throw error;
       if (deal) await Promise.all([
-        telegram(botToken, "sendMessage", { chat_id: deal.buyer_chat_id, text: `Оплата по сделке #${deal.deal_number} получена. Подтвердите выполнение, когда всё будет готово.`, reply_markup: { inline_keyboard: [[{ text: "Подтвердить выполнение", callback_data: `confirm:${deal.id}` }, { text: "Открыть спор", callback_data: `dispute:${deal.id}` }]] } }),
-        telegram(botToken, "sendMessage", { chat_id: deal.seller_chat_id, text: `Оплата по сделке #${deal.deal_number} получена. Ожидайте подтверждения покупателя.` }),
+        telegram(botToken, "sendMessage", { chat_id: deal.buyer_chat_id, text: `Оплата по сделке #${deal.deal_number} получена. Продавец выполнит заказ и отметит его сдачу в боте.` }),
+        telegram(botToken, "sendMessage", { chat_id: deal.seller_chat_id, text: `Оплата по сделке #${deal.deal_number} получена. Когда заказ будет выполнен, нажмите кнопку ниже.`, reply_markup: { inline_keyboard: [[{ text: "Заказ выполнен", callback_data: `complete:${deal.id}` }, { text: "Открыть спор", callback_data: `dispute:${deal.id}` }]] } }),
       ]);
       return json({ ok: true });
     }
@@ -205,6 +225,7 @@ Deno.serve(async (request) => {
       return json({ ok: true });
     }
     if (callback?.data?.startsWith("pay:")) await createInvoice(supabase, botToken, cryptoToken, chatId, callback.data.slice(4));
+    else if (callback?.data?.startsWith("complete:")) await markOrderCompleted(supabase, botToken, chatId, callback.data.slice(9));
     else if (callback?.data?.startsWith("confirm:")) await confirmPayout(supabase, botToken, cryptoToken, chatId, callback.data.slice(8));
     else if (callback?.data?.startsWith("dispute:")) {
       const dealId = callback.data.slice(8);
@@ -213,7 +234,7 @@ Deno.serve(async (request) => {
       if (!currentDeal || (currentDeal.buyer_chat_id !== chatId && currentDeal.seller_chat_id !== chatId)) {
         return json({ ok: true });
       }
-      const { data: deal, error: disputeError } = await supabase.from("crypto_deals").update({ status: "disputed" }).eq("id", dealId).in("status", ["awaiting_payment", "paid"]).select("*").maybeSingle();
+      const { data: deal, error: disputeError } = await supabase.from("crypto_deals").update({ status: "disputed" }).eq("id", dealId).in("status", ["awaiting_payment", "paid", "awaiting_buyer_confirmation"]).select("*").maybeSingle();
       if (disputeError) throw disputeError;
       if (deal) await telegram(botToken, "sendMessage", { chat_id: guarantorAdminChatId(), text: `Спор по сделке #${deal.deal_number}. Выплата остановлена.` });
     } else if (message?.text) {

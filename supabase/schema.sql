@@ -296,7 +296,7 @@ create table if not exists public.crypto_deals (
   amount_usdt numeric(20, 6) not null check (amount_usdt > 0),
   fee_usdt numeric(20, 6) not null check (fee_usdt >= 0),
   seller_payout_usdt numeric(20, 6) not null check (seller_payout_usdt > 0),
-  status text not null default 'awaiting_counterparty' check (status in ('awaiting_counterparty', 'awaiting_payment', 'paid', 'payout_processing', 'completed', 'disputed', 'cancelled')),
+  status text not null default 'awaiting_counterparty' check (status in ('awaiting_counterparty', 'awaiting_payment', 'paid', 'awaiting_buyer_confirmation', 'payout_processing', 'completed', 'disputed', 'cancelled')),
   crypto_invoice_id bigint unique,
   crypto_invoice_hash text,
   payout_transfer_id bigint unique,
@@ -313,6 +313,9 @@ create table if not exists public.crypto_bot_states (
   payload jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.crypto_deals drop constraint if exists crypto_deals_status_check;
+alter table public.crypto_deals add constraint crypto_deals_status_check check (status in ('awaiting_counterparty', 'awaiting_payment', 'paid', 'awaiting_buyer_confirmation', 'payout_processing', 'completed', 'disputed', 'cancelled'));
 
 create index if not exists crypto_deals_status_created_at_idx
 on public.crypto_deals (status, created_at desc);
@@ -335,7 +338,7 @@ begin
   set status = 'payout_processing', last_error = null
   where id = p_deal_id
     and buyer_chat_id = p_buyer_chat_id
-    and status = 'paid'
+    and status = 'awaiting_buyer_confirmation'
   returning crypto_deals.seller_chat_id, crypto_deals.seller_payout_usdt, crypto_deals.deal_number;
 end;
 $$;
