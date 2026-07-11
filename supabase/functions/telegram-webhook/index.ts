@@ -105,10 +105,7 @@ function controlCenterMenu() {
   return {
     inline_keyboard: [
       [{ text: "📥 Входящие заявки", callback_data: "list:all:0" }],
-      [
-        { text: "🆕 Новые", callback_data: "list:new:0" },
-        { text: "⚡ В работе", callback_data: "list:answered:0" },
-      ],
+      [{ text: "🆕 Новые", callback_data: "list:new:0" }],
       [
         { text: "🏁 Завершённые", callback_data: "list:completed:0" },
         { text: "🚫 Отклонённые", callback_data: "list:rejected:0" },
