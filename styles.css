@@ -107,16 +107,54 @@ body {
 }
 
 .site-brand-link__mark {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
+  position: relative;
+  isolation: isolate;
+  width: 42px;
+  height: 42px;
+  overflow: hidden;
+  border: 1px solid rgba(175, 239, 255, 0.34);
+  border-radius: 14px;
   display: grid;
   place-items: center;
-  color: #07111f;
-  background: linear-gradient(135deg, #8ce6ff, #66d9ff 45%, #7c8cff);
+  color: #e9fbff;
+  background:
+    radial-gradient(circle at 76% 20%, rgba(222, 250, 255, 0.7), transparent 16%),
+    radial-gradient(circle at 30% 100%, rgba(124, 140, 255, 0.48), transparent 48%),
+    linear-gradient(145deg, #173e61, #0c223b 58%, #071322);
+  font-size: 0.77rem;
+  font-weight: 800;
+  letter-spacing: -0.08em;
+  text-shadow: 0 0 18px rgba(184, 245, 255, 0.72);
   box-shadow:
-    0 10px 24px rgba(102, 217, 255, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    0 12px 30px rgba(3, 14, 28, 0.34),
+    0 0 0 4px rgba(102, 217, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 -14px 24px rgba(0, 0, 0, 0.18);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-color 0.35s ease;
+}
+
+.site-brand-link__mark::after {
+  content: "";
+  position: absolute;
+  width: 78px;
+  height: 18px;
+  top: -13px;
+  left: -24px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.48), transparent);
+  transform: rotate(-28deg);
+  opacity: 0.68;
+  pointer-events: none;
+}
+
+.site-brand-link:hover .site-brand-link__mark {
+  border-color: rgba(188, 244, 255, 0.62);
+  box-shadow:
+    0 16px 36px rgba(3, 14, 28, 0.38),
+    0 0 0 5px rgba(102, 217, 255, 0.08),
+    0 0 28px rgba(102, 217, 255, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px) rotate(-4deg);
 }
 
 .site-nav {
