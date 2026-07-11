@@ -9,6 +9,10 @@ function required(name: string) {
   return value;
 }
 
+function guarantorAdminChatId() {
+  return Deno.env.get("CRYPTO_GUARANTOR_ADMIN_CHAT_ID") || required("TELEGRAM_ADMIN_CHAT_ID");
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
@@ -164,7 +168,9 @@ Deno.serve(async (request) => {
     const rawBody = await request.text();
 
     if (url.searchParams.get("source") === "crypto") {
-      if (url.searchParams.get("secret") !== required("CRYPTO_PAY_WEBHOOK_SECRET") || !await verifyCryptoSignature(cryptoToken, rawBody, request.headers.get("crypto-pay-api-signature"))) return json({ ok: false }, 401);
+      // Crypto Pay signs the original body with the app-token-derived HMAC.
+      // The public callback URL is therefore safe without exposing a token in it.
+      if (!await verifyCryptoSignature(cryptoToken, rawBody, request.headers.get("crypto-pay-api-signature"))) return json({ ok: false }, 401);
       const update = JSON.parse(rawBody);
       if (update.update_type !== "invoice_paid") return json({ ok: true });
       const invoice = update.payload;
@@ -209,7 +215,7 @@ Deno.serve(async (request) => {
       }
       const { data: deal, error: disputeError } = await supabase.from("crypto_deals").update({ status: "disputed" }).eq("id", dealId).in("status", ["awaiting_payment", "paid"]).select("*").maybeSingle();
       if (disputeError) throw disputeError;
-      if (deal) await telegram(botToken, "sendMessage", { chat_id: required("CRYPTO_GUARANTOR_ADMIN_CHAT_ID"), text: `Спор по сделке #${deal.deal_number}. Выплата остановлена.` });
+      if (deal) await telegram(botToken, "sendMessage", { chat_id: guarantorAdminChatId(), text: `Спор по сделке #${deal.deal_number}. Выплата остановлена.` });
     } else if (message?.text) {
       const { data: state } = await supabase.from("crypto_bot_states").select("*").eq("chat_id", chatId).maybeSingle();
       if (state?.step !== "amount") return json({ ok: true });
