@@ -4277,13 +4277,7 @@ body::after {
 }
 
 .studio-visual__media::after {
-  content: "";
-  position: absolute;
-  z-index: 2;
-  inset: 14px;
-  border: 1px solid rgba(215, 245, 255, 0.18);
-  border-radius: 16px;
-  pointer-events: none;
+  display: none;
 }
 
 .studio-visual__caption {
