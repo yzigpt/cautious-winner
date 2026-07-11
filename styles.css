@@ -3934,7 +3934,8 @@ body::before {
 }
 
 /* Prevent browser image-search overlays from appearing over site photography. */
-.page--site img {
+.page--site img,
+.page--landing img {
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
