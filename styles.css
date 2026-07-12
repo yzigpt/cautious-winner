@@ -3750,6 +3750,13 @@ body::before {
   margin-top: 26px;
 }
 
+.portfolio-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
 .portfolio-status,
 .project-card__status {
   display: inline-flex;
