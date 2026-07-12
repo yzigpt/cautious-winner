@@ -38,6 +38,9 @@ jobs:
             --exclude 'render.yaml' \
             --exclude 'DEPLOY_RENDER.md' \
             --exclude 'DEPLOY_RAILWAY.md'
+          cp index.min.html _site/index.html
+          cp styles.min.css _site/styles.css
+          cp site-shell.min.js _site/site-shell.js
           touch _site/.nojekyll
 
       - name: Upload artifact
