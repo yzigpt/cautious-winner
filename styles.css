@@ -591,6 +591,7 @@ h1 {
   display: grid;
   gap: 14px;
   align-content: start;
+  margin-top: -18px;
 }
 
 .hero-aside__panel {
@@ -4702,6 +4703,10 @@ body::after {
     min-height: 350px;
     border-right: 0;
     border-bottom: 1px solid rgba(169, 232, 255, 0.13);
+  }
+
+  .hero-aside {
+    margin-top: 0;
   }
 }
 
