@@ -3950,6 +3950,39 @@ body::before {
   margin-top: 4px;
 }
 
+.wine-project {
+  border-color: rgba(201, 136, 148, 0.26);
+  background:
+    radial-gradient(circle at 14% 8%, rgba(210, 101, 121, 0.18), transparent 24%),
+    radial-gradient(circle at 84% 0%, rgba(123, 76, 208, 0.16), transparent 22%),
+    linear-gradient(135deg, rgba(33, 9, 18, 0.98), rgba(10, 9, 20, 0.96));
+}
+
+.wine-project__visual {
+  background:
+    linear-gradient(145deg, rgba(44, 11, 23, 0.92), rgba(7, 10, 18, 0.95));
+}
+
+.wine-project__visual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(4, 6, 14, 0.1), rgba(4, 6, 14, 0.62)),
+    linear-gradient(0deg, rgba(4, 6, 14, 0.45), transparent 42%);
+  pointer-events: none;
+}
+
+.wine-project__visual img {
+  object-position: center 42%;
+  filter: saturate(1.05) contrast(1.08);
+}
+
+.wine-project__link {
+  justify-self: start;
+  margin-top: 4px;
+}
+
 /* Prevent browser image-search overlays from appearing over site photography. */
 .page--site img,
 .page--landing img {
