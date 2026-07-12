@@ -433,7 +433,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
-    return serveFile(res, "index.min.html");
+    return serveFile(res, "index.html");
   }
 
   if (req.method === "GET" && (url.pathname === "/reviews" || url.pathname === "/reviews.html")) {
@@ -906,9 +906,9 @@ const server = http.createServer(async (req, res) => {
   }
 
   const staticCandidates = {
-    "/styles.css": "styles.min.css",
+    "/styles.css": "styles.css",
     "/app.js": "app.js",
-    "/site-shell.js": "site-shell.min.js",
+    "/site-shell.js": "site-shell.js",
     "/home-leads.js": "home-leads.js",
     "/reviews.js": "reviews.js",
     "/requests.js": "requests.js",
@@ -918,8 +918,6 @@ const server = http.createServer(async (req, res) => {
     "/scene.js": "scene.js",
     "/assets/developer-studio-hero.png": "assets/developer-studio-hero.png",
     "/assets/frog-garant-avatar.png": "assets/frog-garant-avatar.png",
-    "/assets/wine-cellar.jpg": "assets/wine-cellar.jpg",
-    "/assets/wine-glass.jpg": "assets/wine-glass.jpg",
     "/auth.js": "auth.js",
     "/supabase-client.js": "supabase-client.js",
     "/supabase-config.js": "supabase-config.js",
