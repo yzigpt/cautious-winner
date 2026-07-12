@@ -3751,13 +3751,6 @@ body::before {
   margin-top: 26px;
 }
 
-.portfolio-hero__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 18px;
-}
-
 .portfolio-status,
 .project-card__status {
   display: inline-flex;
@@ -3984,11 +3977,6 @@ body::before {
 .wine-project__visual img {
   object-position: center 42%;
   filter: saturate(1.05) contrast(1.08);
-}
-
-.wine-project__link {
-  justify-self: start;
-  margin-top: 4px;
 }
 
 /* Prevent browser image-search overlays from appearing over site photography. */
